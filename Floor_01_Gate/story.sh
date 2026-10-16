@@ -76,14 +76,15 @@ while true; do
     echo -e "  ${GREEN}1.${NC} 『変数』って何ですか？ 普通の文字や数字とどう違うの？"
     echo -e "  ${GREEN}2.${NC} 『コンパイル』って、人間が書いたコードをどうやって機械語にしてるの？"
     echo -e "  ${GREEN}3.${NC} 『フォーマット指定子（%04d等）』ってなんでわざわざ書く必要があるの？"
-    echo -e "  ${GREEN}4.${NC} 【疑問はすべて氷解した】第1層のミッションへ進む"
+    echo -e "  ${GREEN}4.${NC} 『printf』って具体的にどう書くの？ 穴埋めパズルのルールを教えて"
+    echo -e "  ${GREEN}5.${NC} 【疑問はすべて氷解した】第1層のミッションへ進む"
     echo ""
-    echo -n -e "${YELLOW}選択肢を入力 (1-4): ${NC}"
+    echo -n -e "${YELLOW}選択肢を入力 (1-5): ${NC}"
     
     if [ -t 0 ]; then
         read -r choice
     else
-        read -r choice 2>/dev/null || choice="4"
+        read -r choice 2>/dev/null || choice="5"
     fi
 
     case "$choice" in
@@ -149,10 +150,34 @@ while true; do
             press_enter
             ;;
         4)
+            clear_screen
+            show_banner
+            kayaba_say "「printf の具体的な書き方だな。よろしい、耳をかっぽじって聞きたまえ」"
+            echo -e "${BOLD}■ 茅場教官の解説：printf は『穴埋めパズル』である${NC}"
+            echo -e "--------------------------------------------------"
+            echo -e "printf の基本構文はいたって単純だ。"
+            echo -e ""
+            echo -e "  ${GREEN}printf(\"テンプレート文章 %指定子\\\\n\", 変数名);${NC}"
+            echo -e ""
+            echo -e "例えば、プレイヤー名を出したいならこう書く："
+            echo -e "  ${CYAN}printf(\"PLAYER : %s\\\\n\", player_name);${NC}"
+            echo -e ""
+            echo -e "ダブルクォーテーションの中にある '%s' の場所に、カンマの後ろにある"
+            echo -e "'player_name'（中身は \"KIRITO\"）がスポッと代入されるのだ。"
+            echo -e "そして最後の '\\\\n' は『改行せよ』という命令だ。これを忘れると次の行と横にくっついてしまう。"
+            echo -e ""
+            echo -e "もし変数を2つ埋め込みたいなら、穴を2つ開けて、後ろにも変数を2つ並べる："
+            echo -e "  ${CYAN}printf(\"HP     : %04d / %04d\\\\n\", hp_current, hp_max);${NC}"
+            echo -e ""
+            echo -e "これだけだ。何も恐れることはない。穴の形（%sや%04d）を合わせ、変数をはめるだけだ。"
+            echo -e "--------------------------------------------------"
+            press_enter
+            ;;
+        5)
             break
             ;;
         *)
-            echo -e "${RED}[SYSTEM ERROR] 1から4の番号を入力したまえ。${NC}"
+            echo -e "${RED}[SYSTEM ERROR] 1から5の番号を入力したまえ。${NC}"
             sleep 1
             ;;
     esac
@@ -170,6 +195,7 @@ echo -e "${BOLD}【第1層 ミッション指令書】${NC}"
 echo -e "--------------------------------------------------"
 echo -e "1. 'MISSION.md' を熟読し、要求される出力フォーマット（寸分のズレも許されぬ6行）を確認せよ。"
 echo -e "2. エディタで 'Floor_01_Gate/main.c' を開き、/* TODO */ を実装せよ。"
+echo -e "   （MISSION.md に写経できるサンプルコードを載せてある。真似して書いてみたまえ）"
 echo -e "3. 準備ができたら、自動採点スクリプト './test.sh' を実行してボスを撃破せよ。"
 echo -e "--------------------------------------------------"
 echo ""
