@@ -1,171 +1,218 @@
-# 【第8層：外界回廊】〜ファイルとOSの脈動〜
+# 【第8層：外界回廊】〜ファイルシステムとディレクトリ走査〜
 
 > **茅場晶彦からのシステム通達**:
-> 「見事だ、剣士よ。君はメモリの荒野を抜け、ついにカーネルが管理するストレージの領域……『外界回廊』へと足を踏み入れた。
-> プログラムがメモリ上に展開された一時の夢であるならば、ファイルとはディスクに刻まれる永続的な実体である。
-> ディレクトリを走査し、拡張子を見分け、OSのファイルシステムと直接対話せよ。
-> ここで修得する技術は、のちに最終兵器『`gear clean`』コマンドの核となる」
+> 「プレイヤー諸君、ようこそ第8層『外界回廊』へ。
+> 君たちのプログラムは、メモリという閉ざされた箱庭から脱出し、
+> ついに永続化の領域——オペレーティングシステムの『ファイルシステム』へと足を踏み入れる。
+>
+> フォルダ（ディレクトリ）を開き、中に眠る無数のファイルたちを走査し、拡張子を見極め、適切な保管庫へと分類・再配置する。
+> UNIXにおいて『すべてはファイルである』という哲学がある。
+> `opendir`、`readdir`、`stat`、`rename`——OSが授けしシステム関数を自在に操り、
+> 混沌とした迷宮の回廊を、整然たる美しさへと導いてみせよ」
 
 ---
 
-## 1. この階層で学ぶC言語とOSインターフェースの核心
-
-これまではメモリ上のデータ（変数や動的配列）を扱ってきましたが、プログラムが終了してもデータを残すには**ファイルシステム**との連携が不可欠です。本階層では、C標準ライブラリのファイル入出力と、POSIX（Unix/Linux）標準のシステムコール／ディレクトリ操作APIを習得します。
-
----
-
-### ① ファイル入出力の基本（`fopen`, `fprintf`, `fclose`）
-
-C言語でファイルにアクセスする際は、`FILE` 構造体ポインタ（ファイルストリーム）を介して操作します。
+## 🎴 【基本構文パターン (Pattern Example)】
+迷ったらまずこの型を見よ。第8層で使う武器はこれだけだ。
 
 ```c
-#include <stdio.h>
+/* パターンA: ディレクトリ走査の黄金ルール */
+DIR *dir = opendir(target_dir);
+if (dir == NULL) return -1;
 
-int main(void) {
-    // 1. ファイルを開く ("w" は書き込みモード、"r" は読み込みモード、"a" は追記モード)
-    FILE *fp = fopen("log.txt", "w");
-    if (fp == NULL) {
-        perror("Failed to open file");
-        return 1;
-    }
+struct dirent *entry;
+while ((entry = readdir(dir)) != NULL) {
+    if (entry->d_name[0] == '.') continue; // 隠しファイルや ., .. をスキップ
+    // ファイル処理
+}
+closedir(dir); // 必ず最後に閉じる！
 
-    // 2. データをファイルに書き込む
-    fprintf(fp, "[SYSTEM LOG] Link Start!\n");
+/* パターンB: ファイルの末尾から拡張子を見つける (strrchr) */
+const char *ext = strrchr(filename, '.'); // 最後の '.' の位置を取得
 
-    // 3. ファイルを閉じる（バッファのフラッシュとリソース解放）
-    fclose(fp);
-    return 0;
+/* パターンC: フルパスを組み立ててファイル種別を判定 (stat) */
+char old_path[1024];
+snprintf(old_path, sizeof(old_path), "%s/%s", target_dir, entry->d_name);
+
+struct stat st;
+if (stat(old_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+    continue; // フォルダ自身は移動対象外としてスキップ
 }
 ```
 
-> ⚠️ **注意**: `fopen` が失敗すると `NULL` が返ります。必ず `NULL` チェックを行う必要があります。また、開いたファイルは必ず `fclose` で閉じなければファイルリーク（リソース漏れ）の原因となります。
+---
+
+## 🔍 【エディタに開いているコードの1行ずつ完全解体新書】
+`cleaner.c` に書かれているコードを1文字残らず分解・解説する。
+
+```c
+DIR *dir = opendir(target_dir);
+```
+- **`DIR`**: ディレクトリを読み取るためのストリーム構造体。
+- **`opendir`**: フォルダを開く関数。存在しない場合は `NULL` を返す。
+
+```c
+struct dirent *entry;
+while ((entry = readdir(dir)) != NULL)
+```
+- **`struct dirent`**: ディレクトリエントリ（ファイル1個ぶんの情報）を表す構造体。
+- **`readdir`**: フォルダ内のファイルを1つずつ先頭から読み進める関数。最後のファイルを読み終わると `NULL` を返すため、`while` ループで全件走査できる。
+- **`entry->d_name`**: そのファイルの名前（例: `"hero.png"` や `"notes.txt"`）。
+
+```c
+if (entry->d_name[0] == '.') continue;
+```
+- なぜ先頭が `.` のものをスキップするのか？
+  - UNIXでは、`.` で始まるファイルは「隠しファイル（設定ファイルなど）」の規約。
+  - さらに、カレント自身を示す `.` や親ディレクトリを示す `..` もこれに該当するため、1行でそれらを安全に除外できる。
+
+```c
+stat(old_path, &st)
+```
+- **`stat`**: ファイルのサイズ、更新日時、ファイルかディレクトリか等の属性（メタデータ）をOSから取得する関数。
+- ⚠️ **超重要**: `entry->d_name`（単なるファイル名）だけを渡すと、現在の実行ディレクトリから探してしまうため失敗する。必ず `target_dir` と連結した `old_path`（完全なパス）を渡さなければならない。
+
+```c
+rename(old_path, new_path);
+```
+- **`rename`**: ファイルの名前を変更する関数。
+- UNIXでは、「フォルダA/ファイル」から「フォルダB/ファイル」へのファイル移動は、単なる**パス名の変更（rename）**として一瞬で完了する。
 
 ---
 
-### ② ディレクトリの走査（`<dirent.h>`: `opendir`, `readdir`, `closedir`）
+## 📖 【カタカナ英語ルビ辞典 (Ruby Words)】
+プログラミングに出てくる難解な英単語を日本語でイメージせよ。
 
-フォルダ（ディレクトリ）の中身を順に読み出すには、POSIXヘッダ `<dirent.h>` の関数群を使用します。
+| 単語 | 読み方 | 意味・役割 |
+| :--- | :--- | :--- |
+| **`opendir`** | オープン・ディア (open directory) | フォルダを開くシステム関数。 |
+| **`readdir`** | リード・ディア (read directory) | フォルダ内の次のファイルを1つ読み出す関数。 |
+| **`closedir`** | クローズ・ディア (close directory) | 開いたフォルダを閉じる関数。 |
+| **`stat`** | スタット (status) | ファイルの属性（サイズやフォルダ種別）を調べる関数。 |
+| **`dirent`** | ディア・エント (directory entry) | フォルダ内のファイル1件分のデータ構造体。 |
+| **`strrchr`** | ストリング・ライト・キャラクター | 文字列の右（末尾）から指定した文字（`.`）を検索する関数。 |
+| **`rename`** | リネーム | ファイル名変更（移動）を行うシステム関数。 |
+| **`mkdir`** | エムケー・ディル (make directory) | 新しいフォルダを作成する関数。 |
+
+---
+
+## 💡 【これが実際の開発でどう使えるか】
+ごちゃごちゃに散らかったデスクトップや「ダウンロード」フォルダをワンクリックで拡張子ごとに仕分けするクリーンアップツール（CLIオーガナイザー）。
+また、画像処理バッチシステムやWebサーバーへのファイルアップロード処理など、現代のサーバーサイド開発で必須となる**「ファイルシステム操作」**の完全な基本形である。
+
+---
+
+## ⚠️ 【初心者が絶対にハマる3大トラップ】
+
+1. **トラップ1: `stat` にファイル名単体を渡してしまう！**
+   - `stat(entry->d_name, &st)` と書くと、サブフォルダ内のファイルが見つからず必ず失敗します。必ず `old_path`（`target_dir/filename`）を渡してください。
+2. **トラップ2: `.` と `..` を巻き込んで無限ループ！**
+   - `opendir` をすると、必ず `.`（自分）と `..`（親）という特殊エントリが返ってきます。これをスキップしないと、親フォルダを移動しようとして破綻します。
+3. **トラップ3: `closedir` を忘れてリソース漏れ！**
+   - ファイルやディレクトリを開いたら、最後（または途中でエラーリターンする前）に必ず `closedir` を呼び出してください。
+
+---
+
+## 🎯 【ボス戦クリア目標＆ステップ・バイ・ステップ写経ガイド】
+
+`Floor_08_OuterCorridor/cleaner.c` を開き、以下の手順で実装せよ。
 
 ```c
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
-void list_files(const char *dir_path) {
-    DIR *dir = opendir(dir_path);
+// 武器①: 拡張子から分類フォルダ名を決定するヘルパー
+static const char *get_category(const char *filename) {
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL || ext == filename) {
+        return "Others";
+    }
+
+    if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0) {
+        return "Images";
+    } else if (strcmp(ext, ".pdf") == 0 || strcmp(ext, ".txt") == 0) {
+        return "Docs";
+    } else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
+        return "Code";
+    } else if (strcmp(ext, ".zip") == 0) {
+        return "Archives";
+    } else {
+        return "Others";
+    }
+}
+
+// 武器②: ディレクトリ走査とクリーンアップ実行
+int clean_directory(const char *target_dir, int dry_run) {
+    if (target_dir == NULL) {
+        return -1;
+    }
+
+    DIR *dir = opendir(target_dir);
     if (dir == NULL) {
-        perror("opendir failed");
-        return;
+        return -1;
     }
 
     struct dirent *entry;
-    // readdir はディレクトリ内の要素を1つずつ返す。末尾に達すると NULL になる
+    int moved_count = 0;
+
     while ((entry = readdir(dir)) != NULL) {
-        // entry->d_name にファイル名/フォルダ名が入っている
-        printf("Found: %s\n", entry->d_name);
+        // 1. 隠しファイルや ., .. をスキップ
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        // 2. フルパスを構築
+        char old_path[1024];
+        snprintf(old_path, sizeof(old_path), "%s/%s", target_dir, entry->d_name);
+
+        // 3. ファイル情報を取得し、サブディレクトリならスキップ
+        struct stat st;
+        if (stat(old_path, &st) != 0 || S_ISDIR(st.st_mode)) {
+            continue;
+        }
+
+        // 4. カテゴリ決定と移動先パスの構築
+        const char *category = get_category(entry->d_name);
+        char dest_dir[1024];
+        char new_path[1024];
+        snprintf(dest_dir, sizeof(dest_dir), "%s/%s", target_dir, category);
+        snprintf(new_path, sizeof(new_path), "%s/%s/%s", target_dir, category, entry->d_name);
+
+        // 5. 実行モード (dry_run == 0) の場合はフォルダ作成と移動
+        if (dry_run == 0) {
+            mkdir(dest_dir, 0755); // フォルダが無ければ作成
+            if (rename(old_path, new_path) == 0) {
+                moved_count++;
+            }
+        } else {
+            // リハーサルモード: カウントのみ
+            moved_count++;
+        }
     }
 
     closedir(dir);
-}
-```
-
-> 💡 **重要ルール**: `readdir` はカレントディレクトリを表す `.` や親ディレクトリを表す `..` も返します。隠しファイル（先頭が `.` のファイル）をスキップしたい場合は、`entry->d_name[0] == '.'` の条件判定で除外します。
-
----
-
-### ③ ファイル情報の取得とフォルダ作成（`<sys/stat.h>`: `stat`, `mkdir`）
-
-エントリが「ファイル」か「ディレクトリ（フォルダ）」かを判定したり、新しいディレクトリを作成するには `<sys/stat.h>` を利用します。
-
-#### ファイル種別・属性の取得 (`stat`)
-```c
-#include <sys/stat.h>
-
-struct stat st;
-if (stat(full_path, &st) == 0) {
-    if (S_ISDIR(st.st_mode)) {
-        // ディレクトリの場合の処理
-    } else if (S_ISREG(st.st_mode)) {
-        // 通常ファイルの場合の処理
-    }
-}
-```
-
-#### ディレクトリの作成 (`mkdir`)
-```c
-#include <sys/stat.h>
-
-// 第2引数の 0755 はパーミッション（所有者: 読み書き実行、グループ/その他: 読み実行）
-if (mkdir("NewFolder", 0755) != 0) {
-    // 既に存在する場合などはエラーとなる（errno == EEXIST）
+    return moved_count;
 }
 ```
 
 ---
 
-### ④ ファイルの移動・リネーム（`rename`）
+## 4. クリア手順（ターミナルで実行）
 
-ファイルを別の場所や別の名前に移動するには、標準関数 `rename` を使います。
-
-```c
-#include <stdio.h>
-
-// "dungeon_box/map.png" を "dungeon_box/Images/map.png" へ移動
-if (rename("dungeon_box/map.png", "dungeon_box/Images/map.png") == 0) {
-    printf("Successfully moved!\n");
-} else {
-    perror("rename failed");
-}
-```
-
----
-
-## 2. 現場で飛び交う業界用語辞典
-
-- **ファイルディスクリプタ（File Descriptor / FD）**:
-  OSが管理する「開かれたファイルやソケット」を識別するための非負の整数値。0は標準入力（`stdin`）、1は標準出力（`stdout`）、2は標準エラー出力（`stderr`）に割り当てられており、`fopen` などで扱われる `FILE*` 構造体内部でも低レイヤのFDが保持されている。
-- **パーミッション（Permission / アクセス権限）**:
-  Unix/Linux環境において、ファイルやディレクトリに対して「誰が（所有者/グループ/その他）」「どのような操作（Read:4, Write:2, Execute:1）」を行えるかを定めた3桁の8進数（例: `0755` や `0644`）。
-- **サンドボックス（Sandbox / 砂場）**:
-  本番のデータやOSシステム全体に影響を与えないよう、隔離された実験用の領域（フォルダや環境）。本課題の `./dungeon_box/` は、ファイル整理機能を安心してテストするためのサンドボックス領域である。
-
----
-
-## 3. ボス戦ミッション（実装仕様）
-
-本階層の目的は、乱雑に置かれたダンジョン内のドロップアイテム（ファイル）を、拡張子に応じて自動的に適切なカテゴリフォルダ（`Images`, `Docs`, `Code`, `Archives`, `Others`）へ仕分け・移動するディレクトリクリーン関数 `clean_directory` を完成させることである。
-
-### 対象ファイルと振り分けルール
-
-1. **対象ディレクトリ**: `target_dir`（例: `./dungeon_box`）
-2. **スキップ条件**:
-   - 先頭が `.` で始まる隠しファイル（例: `.hidden_key`）およびディレクトリ参照（`.`, `..`）
-   - サブディレクトリ自体（`stat` で `S_ISDIR` に該当するもの）
-3. **拡張子と分類先フォルダ**:
-   - `.png`, `.jpg` ➔ `Images`
-   - `.pdf`, `.txt` ➔ `Docs`
-   - `.c`, `.h` ➔ `Code`
-   - `.zip` ➔ `Archives`
-   - 上記以外の通常の拡張子／拡張子なし ➔ `Others`
-4. **ディレクトリ作成とファイル移動**:
-   - 該当するサブフォルダ（例: `target_dir/Images`）が存在しない場合は `mkdir(subfolder_path, 0755)` で自動作成する。
-   - `dry_run == 0` の場合: ファイルを `rename()` で移動し、処理した件数をカウントする。
-   - `dry_run == 1` の場合: 実際にはファイル移動（`rename`）やフォルダ作成を行わず、移動対象となるファイルの件数のみをカウントして返す。
-5. **返り値**:
-   - 整理（または整理予定）対象となったファイルの合計件数（`int`）を返す。
-
----
-
-## 4. クリア手順と検証方法
-
-1. **環境セットアップ**:
-   ```bash
-   ./setup_sandbox.sh
-   ```
-2. **未完成状態でのテスト実行（必ず FAIL）**:
-   ```bash
-   ./test.sh
-   ```
-3. **模範解答でのテスト検証（必ず PASS）**:
+1. 模範解答でテスト（事前検証）：
    ```bash
    ./test.sh --solution
    ```
+   `【判定】 CLEARED!` と表示されることを確認せよ。
+
+2. 受講者用コード `cleaner.c` を編集：
+   ガイドに従ってディレクトリクリーン関数を完成させよ。
+
+3. ボス戦（自動採点スクリプト）に挑む：
+   ```bash
+   ./test.sh
+   ```
+   サンドボックス内のファイル振り分けテスト（dry-run検証および実移動検証）に合格し、緑色の文字で `【判定】 CLEARED!` が出れば第8層突破だ！

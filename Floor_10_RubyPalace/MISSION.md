@@ -14,9 +14,95 @@
 
 ---
 
-## 1. この階層で学ぶC言語とPOSIXカーネルの核心
+## 🎴 【基本構文パターン (Pattern Example)】
+迷ったらまずこの型を見よ。第10層で使う武器はこれだけだ。
 
-最上層である第10層では、C言語標準ライブラリの枠を超え、POSIX規格で定められたOSカーネル直結のシステムコール（System Call）と、プロダクションビルドにおけるコンパイラ最適化・デプロイ技術を修得します。
+```c
+/* パターンA: OS情報の取得 (uname システムコール) */
+struct utsname uts;
+if (uname(&uts) != 0) return 1;
+printf("OS      : %s (%s)\n", uts.sysname, uts.machine);
+
+/* パターンB: ディスク容量と使用率の計算 (statvfs システムコール) */
+struct statvfs stat;
+if (statvfs(".", &stat) != 0) return 1;
+
+double storage_used = 0.0;
+if (stat.f_blocks > 0) {
+    double total_bytes = (double)stat.f_blocks * (double)stat.f_frsize;
+    double free_bytes  = (double)stat.f_bavail * (double)stat.f_frsize;
+    double used_bytes  = total_bytes - free_bytes;
+    storage_used = (used_bytes / total_bytes) * 100.0;
+}
+printf("STORAGE : %.1f%% USED\n", storage_used);
+
+/* パターンC: C言語文字列でバックスラッシュ \ を出力するお約束 */
+printf("      /\\\n"); // 文字列中で \ を出すには \\ と2個並べる！
+```
+
+---
+
+## 🔍 【エディタに開いているコードの1行ずつ完全解体新書】
+`main.c` に書かれているコードを1文字残らず分解・解説する。
+
+```c
+#include <sys/utsname.h>
+#include <sys/statvfs.h>
+#include "../shared/sao_ui.h"
+```
+- **`<sys/utsname.h>`**: OSの名前やCPUの種類を取得するシステムコール `uname()` を使うためのPOSIXヘッダ。
+- **`<sys/statvfs.h>`**: ディスクの残容量やファイルシステムの統計を取得するシステムコール `statvfs()` を使うためのPOSIXヘッダ。
+- **`"../shared/sao_ui.h"`**: アインクラッドの美しい装飾枠線を出力する共通マクロ群（`SAO_PRINT_HEADER` など）。
+
+```c
+struct utsname uts;
+uname(&uts);
+```
+- **`uname`（ユーネーム）**: OSカーネルに「君の名前とマシン構成を教えてくれ」と直接問い合わせるシステムコール。
+- 引数に構造体のアドレス `&uts` を渡すことで、カーネルが構造体の中に `sysname`（例: `"Darwin"` や `"Linux"`）と `machine`（例: `"arm64"` や `"x86_64"`）を書き込んでくれる。
+
+```c
+struct statvfs stat;
+statvfs(".", &stat);
+```
+- **`statvfs`（スタット・ブイ・エフ・エス）**: カレントディレクトリ `"."` が存在するハードディスクの容量統計をカーネルから直接吸い上げるシステムコール。
+- **`stat.f_blocks`**: ディスク全体のブロック数。
+- **`stat.f_bavail`**: 一般ユーザーが使える空きブロック数。
+- **`stat.f_frsize`**: 1ブロックあたりのバイト数（通常 4096 バイトなど）。
+- 「ブロック数 × 1ブロックのバイト数」を計算することで、ハードディスクの正確な総バイト数や使用率（%）が導き出せる。
+
+```c
+printf("      /\\\n");
+```
+- **なぜ `\\` と2つ書くのか？**:
+  - C言語の文字列の中で `\` はエスケープ文字（`\n` で改行、`\0` でヌル文字など）として扱われる。
+  - そのため、純粋な記号としての `\` を1文字画面に表示したい時は、`\\` と2回連続で書かなければならない。
+
+---
+
+## 📖 【カタカナ英語ルビ辞典 (Ruby Words)】
+プログラミングに出てくる難解な英単語を日本語でイメージせよ。
+
+| 単語 | 読み方 | 意味・役割 |
+| :--- | :--- | :--- |
+| **`uname`** | ユーネーム (UNIX name) | OS名やCPUアーキテクチャを取得するシステムコール。 |
+| **`statvfs`** | スタット・ブイ・エフ・エス | 仮想ファイルシステム（ディスク）の容量情報を調べる関数。 |
+| **`system call`** | システムコール | ユーザープログラムがOSの心臓部（カーネル）に直接依頼する命令。 |
+| **`deploy`** | デプロイ (配備・展開) | 作成したバイナリをユーザーがどこからでも実行できる場所に配置すること。 |
+| **`PATH`** | パス (環境変数) | コマンド名だけを打ったときに、OSが実行ファイルを探しに行くディレクトリ一覧。 |
+| **`ASCII Art`** | アスキーアート (AA) | アルファベットや記号文字だけで描かれたグラフィック絵。 |
+| **`-O2`** | オー・ツー (Optimization Level 2) | コンパイラに「限界まで高速に動く機械語に変換せよ」と命じる最適化フラグ。 |
+
+---
+
+## 💡 【これが実際の開発でどう使えるか】
+ターミナルでよく使われる `uname -a`, `df -h`（ディスク残量確認）, `htop`, `neofetch`。
+これらの有名システムツールは、内部で一体何をやっているのか？
+まさに今回君が使った `uname()` と `statvfs()` を呼び出し、OSカーネルから直接データを吸い上げて画面に整形出力しているのだ。君は今、本物のシステム管理ツールの心臓部を自らの手で完成させたのである。
+
+---
+
+## 1. この階層で学ぶC言語とPOSIXカーネルの核心
 
 ```
  +-------------------------------------------------------+
@@ -33,81 +119,7 @@
  +-------------------------------------------------------+
 ```
 
----
-
-### ① `<sys/utsname.h>` : システム情報の取得 `uname()`
-
-OSの名前、ノード名、カーネルバージョン、ハードウェアアーキテクチャなどの低レイヤ情報を取得するには、`<sys/utsname.h>` に定義された `uname()` 関数を使用します。
-
-#### 構造体 `struct utsname` の主要メンバー
-
-```c
-#include <sys/utsname.h>
-
-struct utsname uts;
-if (uname(&uts) == 0) {
-    printf("OS Name : %s\n", uts.sysname);  // 例: Linux, Darwin
-    printf("Node    : %s\n", uts.nodename); // ホスト名
-    printf("Release : %s\n", uts.release);  // カーネルリリース
-    printf("Machine : %s\n", uts.machine);  // 例: x86_64, aarch64
-}
-```
-
-- **`sysname`**: オペレーティングシステムの名前（Linux, Darwin など）。
-- **`machine`**: CPUアーキテクチャ識別子（`x86_64`, `aarch64` など）。
-
----
-
-### ② `<sys/statvfs.h>` : ストレージ統計の取得 `statvfs()`
-
-ディスクやファイルシステムの総容量・使用率を正確に算出するため、`<sys/statvfs.h>` の `statvfs()` を使用します。
-
-```c
-#include <sys/statvfs.h>
-
-struct statvfs stat;
-if (statvfs(".", &stat) == 0) {
-    // 総ブロック数 × ブロックサイズ ＝ 総バイト数
-    unsigned long long total_bytes = (unsigned long long)stat.f_blocks * stat.f_frsize;
-
-    // 利用可能ブロック数 × ブロックサイズ ＝ 空きバイト数
-    unsigned long long free_bytes  = (unsigned long long)stat.f_bavail * stat.f_frsize;
-
-    // 使用済みバイト数
-    unsigned long long used_bytes  = total_bytes - free_bytes;
-
-    // 使用率（パーセンテージ）の計算
-    double storage_used = ((double)used_bytes / (double)total_bytes) * 100.0;
-
-    printf("Storage Used: %.1f%%\n", storage_used);
-}
-```
-
-#### 重要ポイント：
-- **`stat.f_blocks`**: ファイルシステムの総ブロック数。
-- **`stat.f_bavail`**: 一般ユーザーが利用可能な空きブロック数。
-- **`stat.f_frsize`**: 基礎ブロックサイズ（バイト）。
-- ゼロ除算（`total_bytes == 0`）を防止するため、計算前に必ずチェックまたは防御コードを入れます。
-
----
-
-### ③ リリース最適化コンパイル（`-O2` オプション）
-
-開発段階（デバッグ時）では `-g` や `-O0` を指定してコンパイルしますが、本番環境（プロダクション）へデプロイするバイナリでは GCC/Clang の最適化フラグ **`-O2`** を使用します。
-
-```bash
-gcc -std=c11 -O2 -Wall -Wextra -Werror -o floor_runner main.c
-```
-
-- **`-O2`（Level 2 Optimization）**:
-  コードサイズを過剰に膨らませることなく、ループ展開、インライン化、レジスタ割り当ての最適化など、最高クラスの実行速度パフォーマンスを引き出す標準的な最適化レベルです。
-
----
-
-### ④ 環境変数 `PATH` と `~/.local/bin` へのデプロイ
-
-作成したプログラムをターミナルのどこからでもコマンド名ひとつで呼び出せるようにすることを「デプロイ（Deploy）」と呼びます。
-
+### 環境変数 `PATH` と `~/.local/bin` へのデプロイ
 ```bash
 # 1. ユーザーローカル用の実行ファイルディレクトリを作成
 mkdir -p ~/.local/bin
@@ -115,116 +127,101 @@ mkdir -p ~/.local/bin
 # 2. ビルドしたバイナリを配置
 cp gear ~/.local/bin/gear
 
-# 3. SHELLの設定ファイル（~/.bashrc または ~/.zshrc）に PATH を追加
-export PATH="$HOME/.local/bin:$PATH"
+# 3. ターミナルのどこからでも gear で起動可能になる！
 ```
-
-これにより、コマンドラインで `./gear` ではなく `gear` と打つだけでプログラムが起動するようになります。
 
 ---
 
-## 2. 現場で飛び交う業界用語辞典
+## ⚠️ 【初心者が絶対にハマる3大トラップ】
 
-- **POSIX (Portable Operating System Interface)**:
-  UNIX系OS（Linux, macOS, BSDなど）間でプログラムの互換性を保つための標準規格。`uname()` や `statvfs()` は POSIX 準拠のシステムコールである。
-- **システムコール (System Call)**:
-  ユーザープログラムがOSのカーネル機能（ファイル操作、メモリ確保、ハードウェアアクセス）を呼び出すための特殊な命令。
-- **デプロイ (Deployment)**:
-  開発・ビルドしたソフトウェアを実行環境に配置し、エンドユーザーが利用可能な状態にすること。
-- **インライン展開 (Function Inlining)**:
-  コンパイラの最適化機能（`-O2`など）の一つ。関数呼び出しのオーバーヘッドを無くすため、関数の中身を実行場所に直接埋め込む手法。
-- **バイナリストリッピング (Strip)**:
-  コンパイルされた実行ファイルからデバッグ用シンボル情報を削ぎ落とし、ファイルサイズを最小化する工程。
+1. **トラップ1: アスキーアートのバックスラッシュ `\` エスケープ漏れ！**
+   - 文字列中で `\` を1個だけ書くと、コンパイラが「未知のエスケープシーケンス」と警告を出し、アスキーアートが崩れます。必ず `\\` と2個重ねてください。
+2. **トラップ2: ゼロ除算の考慮漏れ！**
+   - 特殊な仮想環境で `stat.f_blocks` が 0 の場合、割り算するとCPUクラッシュします。必ず `if (stat.f_blocks > 0)` の中で計算してください。
+3. **トラップ3: `uname` や `statvfs` にアドレス `&` を渡し忘れる！**
+   - これらの関数は、渡された構造体にカーネルが結果を書き込むため、実体ではなくポインタ（`&uts`, `&stat`）を渡さなければなりません。
 
 ---
 
-## 3. ボス戦ミッション（最終実装仕様）
+## 🎯 【ボス戦クリア目標＆ステップ・バイ・ステップ写経ガイド】
 
-`Floor_10_RubyPalace/main.c` を編集し、`uname()` と `statvfs()` から実機システム情報を取得し、SAO風ヘッダーおよび以下のクリア認定証（アスキーアート）を出力する最終プログラムを完成させよ。
+`Floor_10_RubyPalace/main.c` を開き、以下の完成コードを記述せよ。
 
-### 要求される出力フォーマット
+```c
+#include <stdio.h>
+#include <sys/utsname.h>
+#include <sys/statvfs.h>
+#include "../shared/sao_ui.h"
 
-```text
-==================================================
-  [AINCRAD SYSTEM] : RUBY PALACE - FINAL CLEAR
-==================================================
-OS      : <実機のsysname> (<実機のmachine>)
-STORAGE : <実機のディスク使用率> USED
---------------------------------------------------
-      /\
-     /  \       SWORD ART ONLINE : KERNEL
-    / /\ \      =========================
-   / /  \ \     CLEAR CERTIFICATE
-  / /____\ \
- / ________ \   PLAYER : KIRITO
-/ /        \ \  RANK   : S [MASTER OF KERNEL]
-==================================================
+int main(void) {
+    // ステップ1: uname システムコールでOS情報を取得
+    struct utsname uts;
+    if (uname(&uts) != 0) {
+        return 1;
+    }
+
+    // ステップ2: statvfs システムコールでディスク容量を取得
+    struct statvfs stat;
+    if (statvfs(".", &stat) != 0) {
+        return 1;
+    }
+
+    // ステップ3: ストレージ使用率（%）を計算
+    double storage_used = 0.0;
+    if (stat.f_blocks > 0) {
+        double total_bytes = (double)stat.f_blocks * (double)stat.f_frsize;
+        double free_bytes  = (double)stat.f_bavail * (double)stat.f_frsize;
+        double used_bytes  = total_bytes - free_bytes;
+        storage_used = (used_bytes / total_bytes) * 100.0;
+    }
+
+    // ステップ4: SAOヘッダーおよびシステム情報の出力
+    SAO_PRINT_HEADER("RUBY PALACE - FINAL CLEAR");
+
+    printf("OS      : %s (%s)\n", uts.sysname, uts.machine);
+    printf("STORAGE : %.1f%% USED\n", storage_used);
+    printf("--------------------------------------------------\n");
+
+    // ステップ5: クリア認定証（バックスラッシュ \\ に注意）
+    printf("      /\\\n");
+    printf("     /  \\       SWORD ART ONLINE : KERNEL\n");
+    printf("    / /\\ \\      =========================\n");
+    printf("   / /  \\ \\     CLEAR CERTIFICATE\n");
+    printf("  / /____\\ \\    \n");
+    printf(" / ________ \\   PLAYER : KIRITO\n");
+    printf("/ /        \\ \\  RANK   : S [MASTER OF KERNEL]\n");
+
+    // ステップ6: SAOフッターの出力と正常終了
+    SAO_PRINT_FOOTER();
+
+    return 0;
+}
 ```
-
-#### 具体的な出力例（Linux x86_64 環境の場合）
-```text
-==================================================
-  [AINCRAD SYSTEM] : RUBY PALACE - FINAL CLEAR
-==================================================
-OS      : Linux (x86_64)
-STORAGE : 42.5% USED
---------------------------------------------------
-      /\
-     /  \       SWORD ART ONLINE : KERNEL
-    / /\ \      =========================
-   / /  \ \     CLEAR CERTIFICATE
-  / /____\ \
- / ________ \   PLAYER : KIRITO
-/ /        \ \  RANK   : S [MASTER OF KERNEL]
-==================================================
-```
-
-### 仕様詳細
-
-1. **ヘッダー表示**:
-   `SAO_PRINT_HEADER("RUBY PALACE - FINAL CLEAR");` を使用すること。
-2. **OS情報の出力**:
-   `uname()` で取得した `sysname` と `machine` を `"OS      : %s (%s)\n"` の形式で出力すること。
-3. **ストレージ情報の出力**:
-   `statvfs(".")` を使用してカレントディレクトリが存在するディスクの総容量と使用量を計算し、`"STORAGE : %.1f%% USED\n"` の形式で小数点以下1桁のパーセンテージで出力すること。
-4. **区切り線**:
-   `--------------------------------------------------\n` (ハイフン50個) を出力すること。
-5. **クリア認定証（SAO風アスキーアート）**:
-   以下の行をそのまま出力すること。
-   ```text
-         /\
-        /  \       SWORD ART ONLINE : KERNEL
-       / /\ \      =========================
-      / /  \ \     CLEAR CERTIFICATE
-     / /____\ \
-    / ________ \   PLAYER : KIRITO
-   / /        \ \  RANK   : S [MASTER OF KERNEL]
-   ```
-6. **フッター表示**:
-   `SAO_PRINT_FOOTER();` を使用すること。
 
 ---
 
 ## 4. クリア手順（ターミナルで実行）
 
-1. **手動でビルドとテストを行う場合**:
-   ```bash
-   gcc -std=c11 -O2 -Wall -Wextra -Werror -o floor_runner main.c
-   ./floor_runner
-   ```
-
-2. **最終ボス戦（自動採点スクリプト）に挑む場合**:
-   ```bash
-   ./test.sh
-   ```
-   緑色の文字で `【判定】 CLEARED!` と表示され、アインクラッド全10層の攻略が完了する！
-
-3. **模範解答の検証（メンテナー・採点者用）**:
+1. 模範解答でテスト（事前検証）：
    ```bash
    ./test.sh --solution
    ```
+   `【判定】 CLEARED!` と表示されることを確認せよ。
 
-4. **ボーナスステージ：すべての階層を突破したら、`cd ../gear && make && ./gear stat` を実行し、君たちの手で組み上げた万能CLIツール『`gear`』を目覚めさせよ！**
+2. 受講者用コード `main.c` を編集：
+   ガイドに従ってシステムコール呼び出しと認定証出力を完成させよ。
+
+3. 最終ボス戦（自動採点スクリプト）に挑む：
+   ```bash
+   ./test.sh
+   ```
+   `-O2` リリースビルドの洗礼を通過し、緑色の文字で `【判定】 CLEARED!` が出ればアインクラッド全10層完全制覇だ！
+
+4. **ボーナスステージ**:
+   すべての階層を突破したら、リポジトリのルートで以下を実行し、君たちの手で完成させた万能CLIツール『`gear`』を目覚めさせよ！
+   ```bash
+   cd gear && make && ./gear stat
+   ```
 
 ---
 

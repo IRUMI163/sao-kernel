@@ -10,221 +10,214 @@
 
 ---
 
-## 1. この階層で学ぶC言語の核心
-
-これまでの階層では `int` や `char[]` といった単一の型を扱ってきましたが、現実のアプリケーション開発では「プレイヤーの名前・LV・HP・MP」や「コマンドライン引数の解析結果（コマンド種別・ターゲットパス・フラグ群）」のように、複数の異なる型のデータを1つのまとまりとして管理する必要があります。
-
-これを実現するのが **構造体（`struct`）** と **列挙型（`enum`）** です。
-
----
-
-### ① 構造体（`struct`）とメンバーアクセス
-
-構造体は、異なるデータ型の変数を1つのグループにまとめるカスタムデータ型を作成する仕組みです。
+## 🎴 【基本構文パターン (Pattern Example)】
+迷ったらまずこの型を見よ。第6層で使う武器はこれだけだ。
 
 ```c
-/* 構造体の定義 */
-struct Player {
-    char name[32];
-    int level;
-    int hp;
-    double exp;
-};
+/* パターンA: 構造体ポインタへのアクセス（アロー演算子 ->） */
+out_config->command = CMD_STAT;
+out_config->dry_run = true;
 
-/* 構造体変数の宣言と初期化 */
-struct Player p1 = {"Kirito", 10, 250, 1250.5};
+/* パターンB: 構造体の安全なゼロクリア (memset) */
+memset(out_config, 0, sizeof(GearConfig));
 
-/* メンバーへのアクセス（ドット演算子 .） */
-printf("Player: %s (LV: %d)\n", p1.name, p1.level);
-```
-
-#### メモリ配置と構造体の本質
-構造体の各メンバーはメモリ上に連続して配置されます。これにより、複数の関連データを関数の引数として渡す際も、構造体1つ（またはそのポインタ）を渡すだけで済むようになります。
-
----
-
-### ② 型にエイリアスをつける `typedef`
-
-C言語では構造体を使う際、毎回 `struct Player` と書く必要がありますが、`typedef` を使うことで簡潔な型名を定義できます。
-
-```c
-/* typedef を用いた構造体定義 */
-typedef struct {
-    char name[32];
-    int level;
-    int hp;
-} Player;
-
-/* struct キーワードなしで型として利用可能 */
-Player p1;
-p1.level = 15;
+/* パターンC: バッファ上限を守る安全な文字列コピー (snprintf) */
+snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", "./dungeon_box");
 ```
 
 ---
 
-### ③ 列挙型（`enum`）による状態の表現
-
-プログラム内で「コマンドの種類」や「プレイヤーの状態」を表現する際、魔法の数字（マジックナンバー: `0`, `1`, `2` ...）を直接使うとコードの読解性が著しく低下します。
-`enum` を使うことで、一連の定数に名前を与えることができます。
+## 🔍 【エディタに開いているコードの1行ずつ完全解体新書】
+`arg_parser.c` と `config.h` に書かれているコードを1文字残らず分解・解説する。
 
 ```c
-typedef enum {
-    CMD_NONE = 0,
-    CMD_HELP,     /* 1 */
-    CMD_VERSION,  /* 2 */
-    CMD_STAT,     /* 3 */
-    CMD_MEMO,     /* 4 */
-    CMD_CLEAN     /* 5 */
-} GearCommand;
-
-GearCommand cmd = CMD_STAT;
-if (cmd == CMD_STAT) {
-    /* ステータス画面の処理 */
-}
+int parse_args(int argc, char *argv[], GearConfig *out_config)
 ```
-
----
-
-### ④ 構造体ポインタとアロー演算子（`->`）
-
-構造体を関数に引数として渡す際、値渡し（コピー）を行うとメモリ転送のオーバーヘッドが発生し、関数内での変更が呼び出し元に反映されません。
-そのため、実務では **構造体のポインタ（アドレス渡し）** を使用します。
-
-構造体ポインタ経由でメンバーにアクセスする場合は、ドット演算子 `.` ではなく **アロー演算子 `->`** を使用します。
+- **`int argc, char *argv[]`**: 第2層で学んだ、ターミナルから渡されたコマンドライン引数の数と文字列配列。
+- **`GearConfig *out_config`**: 解析結果を書き込むための「設定情報構造体へのポインタ（住所）」。
+  - なぜポインタ渡しなのか？ 呼び出し元（`main` 関数側）にある構造体の実体を、この関数の中から直接書き換えて結果を持ち帰るため。
 
 ```c
-void reset_player(Player *p) {
-    if (p == NULL) return;
-
-    /* (*p).hp = 100; と同等だが、アロー演算子を用いるのが標準的 */
-    p->hp = 100;
-    p->level = 1;
-}
-```
-
-#### アロー演算子 `->` の構文対比
-
-| アクセス方法 | 記述形式 | 意味 |
-| :--- | :--- | :--- |
-| 直接アクセス | `config.dry_run = true;` | 実体（変数）のメンバーを変更 |
-| 間接アクセス（展開） | `(*out_config).dry_run = true;` | ポインタを間接参照してからメンバー変更 |
-| **アロー演算子** | `out_config->dry_run = true;` | ポインタ経由で直感的にメンバー変更（標準） |
-
----
-
-### ⑤ 構造体のゼロクリア（`memset`）と文字列の安全格納（`snprintf`）
-
-構造体変数を宣言した直後は、メモリ上に予期せぬゴミデータ（不定値）が残っています。
-初期化漏れによる誤動作を防ぐため、まずは `<string.h>` の `memset` を使って構造体全体をゼロクリアするのが現場の定石です。
-
-```c
-#include <string.h>
-
-/* out_config が指すメモリ領域全体を 0 で埋める */
 memset(out_config, 0, sizeof(GearConfig));
 ```
-
-また、構造体の固定長文字配列メンバ（例: `target_path[MAX_PATH_LEN]`）に安全に文字列をコピーするには、`<stdio.h>` の `snprintf` を使うのが非常に便利です。
-バッファサイズを指定することで、絶対に領域外へ溢れさせず、かつ自動的に末尾に `\0` を付与してくれます。
+- **`memset`**: メモリ領域を指定バイト数ぶん特定の値で塗りつぶす関数。
+- ここでは構造体全体のサイズ（`sizeof(GearConfig)`）をすべて `0` で埋めることで、ゴミデータを一掃し、各フラグを初期状態（`false` や `0`）に安全にリセットしている。
 
 ```c
-#include <stdio.h>
+out_config->command = CMD_HELP;
+```
+- **`->`（アロー演算子）**: 「ポインタの指す先にある構造体の中のメンバ（部屋）」を指定する演算子。
+  - 実体変数なら `config.command` だが、ポインタ変数の場合は必ず `out_config->command` と矢印を書く。
 
-/* 安全に target_path に文字列をコピー */
-snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", src);
+```c
+snprintf(out_config->memo_text, sizeof(out_config->memo_text), "%s", argv[2]);
+```
+- **`snprintf`**: 第3層で学んだバッファオーバーフローを100%防ぐ標準関数。
+- 第二引数に「配列の最大バイト数（`sizeof(...)`）」を渡すことで、もし `argv[2]` がどれほど巨大であっても絶対に配列サイズを超えて書き込まず、末尾に必ず `\0` を打ってくれる。
+
+---
+
+## 📖 【カタカナ英語ルビ辞典 (Ruby Words)】
+プログラミングに出てくる難解な英単語を日本語でイメージせよ。
+
+| 単語 | 読み方 | 意味・役割 |
+| :--- | :--- | :--- |
+| **`struct`** | ストラクト (structure) | 構造体。異なる型の変数を1つにまとめた複合データ型。 |
+| **`enum`** | イーナム (enumeration) | 列挙型。コマンドや状態に分かりやすい英単語の定数名を付けたもの。 |
+| **`typedef`** | タイプデフ (type definition) | 型定義。長い型名に短いエイリアス（別名）を付ける命令。 |
+| **`arrow (->)`**| アロー演算子 | 矢印。ポインタが指す先の構造体のメンバにアクセスする記号。 |
+| **`memset`** | メム・セット (memory set) | メモリを指定バイト数ぶん特定の値（通常は0）で塗りつぶす関数。 |
+| **`snprintf`** | エス・エヌ・プリント・エフ | バッファサイズの上限を守って安全に文字列を書き込む関数。 |
+| **`dry-run`** | ドライ・ラン | リハーサル。実際にファイルを動かさず、動作予告だけを出力するモード。 |
+
+---
+
+## 💡 【これが実際の開発でどう使えるか】
+君が普段使っている `git commit -m "update"` や `docker run -d -p 80:80` などのあらゆる本格的CLIツールは、内部でどのように動いているか？
+コマンドラインから渡された不規則な文字列群をそのまま振り回すのではなく、最初にすべて**「引数解析器（Arg Parser）」**に通し、今回作るような1つの設定構造体（`Config`）へと綺麗に格納する。
+これにより、後続のあらゆる処理（ファイル移動やログ記録）が「構造体のフラグを見るだけ」でシンプルに実装できるようになる。これが実務で必須の**データモデリング**だ。
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① 構造体（`struct`）とアロー演算子（`->`）
+異なるデータ型を1つのまとまりとして管理する仕組みです。
+
+```c
+typedef struct {
+    GearCommand command;              // コマンド種別 (enum)
+    char target_path[MAX_PATH_LEN];   // 走査対象パス
+    char memo_text[MAX_MEMO_LEN];     // メモ内容
+    bool dry_run;                     // リハーサル実行フラグ
+    bool verbose;                     // 詳細ログフラグ
+} GearConfig;
+```
+
+ポインタ経由で操作する場合、必ずアロー演算子 `->` を使用します。
+```c
+GearConfig config;
+GearConfig *ptr = &config;
+
+ptr->dry_run = true; // (*ptr).dry_run = true と同等
 ```
 
 ---
 
-## 2. 現場で飛び交う業界用語辞典
-
-- **データモデリング（Data Modeling）**:
-  現実世界の課題やシステム仕様を分析し、最適なデータ構造（構造体やフィールド定義）に落とし込む設計手法のこと。適切なデータモデルを定義できれば、処理ロジック（コード）は自然とシンプルかつ堅牢になる。
-- **Config構造体（Configuration Structure）**:
-  アプリケーション起動時の設定値やコマンドライン引数の解析結果を1つにまとめた構造体。プログラム全体に設定情報を安全かつ分かりやすく伝搬するために用いられる。
-- **ドライラン（Dry-run）**:
-  ファイルの削除や変更などを伴う本番処理を実行する前に、実際の変更を行わずに「どのような操作が行われるか」を事前確認・シミュレーションする実行モードのこと（例: `--dry-run` オプション）。
-
----
-
-## 3. ボス戦ミッション（実装仕様）
-
-本フロアでは、CLIツール `gear` の核となるコマンドライン引数解析エンジン `parse_args` を実装する。
-
-### 対象ファイルとデータ構造
-ヘッダファイル `gear/include/config.h` に定義されている `GearConfig` 構造体および `GearCommand` 列挙型を使用する。
+### ② 列挙型（`enum`）によるコマンド識別
+マジックナンバー（`0`, `1`, `2` ...）の直接使用を避け、意味あるシンボル名で状態を管理します。
 
 ```c
-/* gear/include/config.h */
-#define MAX_PATH_LEN 1024
-#define MAX_MEMO_LEN 512
-
 typedef enum {
     CMD_NONE = 0,
-    CMD_HELP,
-    CMD_VERSION,
-    CMD_STAT,
-    CMD_MEMO,
-    CMD_CLEAN
+    CMD_HELP,     // 1
+    CMD_VERSION,  // 2
+    CMD_STAT,     // 3
+    CMD_MEMO,     // 4
+    CMD_CLEAN     // 5
 } GearCommand;
-
-typedef struct {
-    GearCommand command;
-    char target_path[MAX_PATH_LEN];
-    char memo_text[MAX_MEMO_LEN];
-    bool dry_run;
-    bool verbose;
-} GearConfig;
-
-int parse_args(int argc, char *argv[], GearConfig *out_config);
 ```
 
 ---
 
-### `parse_args` 関数詳細仕様
+## ⚠️ 【初心者が絶対にハマる3大トラップ】
 
-`parse_args(int argc, char *argv[], GearConfig *out_config)` 関数を `arg_parser.c` に実装せよ。
-
-#### 1. 共通事前条件とデフォルト初期化
-1. `out_config == NULL` または `argc < 2` の場合は、処理を行わず即座に `-1` を返せ。
-2. `out_config` が指す構造体全体をゼロクリア（`memset(out_config, 0, sizeof(GearConfig))` や全メンバ初期化）せよ。
-3. デフォルトの `target_path` として `"./dungeon_box"` を設定せよ（文字列コピーを行うこと）。
-
-#### 2. サブコマンドの解析 (`argv[1]`)
-`argv[1]` の文字列に応じて以下の挙動を行え：
-
-- **`-h` または `--help` の場合**:
-  - `out_config->command` に `CMD_HELP` を設定し、`0` を返せ。
-- **`-v` または `--version` の場合**:
-  - `out_config->command` に `CMD_VERSION` を設定し、`0` を返せ。
-- **`stat` の場合**:
-  - `out_config->command` に `CMD_STAT` を設定し、`0` を返せ。
-- **`memo` の場合**:
-  - `out_config->command` に `CMD_MEMO` を設定せよ。
-  - 次の引数 `argv[2]` が存在し（`argc >= 3`）、かつ空文字列（`""`）でない場合、その内容を `out_config->memo_text` に格納（コピー）して `0` を返せ。
-  - もし `argv[2]` が存在しない、または空文字列（`argv[2][0] == '\0'`）の場合は `-1` を返せ。
-- **`clean` の場合**:
-  - `out_config->command` に `CMD_CLEAN` を設定せよ。
-  - 以降の引数 `argv[2]` から `argv[argc - 1]` を順次解析せよ（後述の `clean` オプション解析ルール参照）。解析完了後、`0` を返せ。
-- **上記以外の未知のサブコマンドの場合**:
-  - `-1` を返せ。
-
-#### 3. `clean` コマンドのオプション解析ルール
-`argv[1]` が `"clean"` の場合、`i = 2` から `argc - 1` までの各引数 `argv[i]` について以下のように処理せよ：
-
-- **`"--dry-run"` の場合**: `out_config->dry_run = true;`
-- **`"--verbose"` または `"-v"` の場合**: `out_config->verbose = true;`
-- **それ以外の文字列（ハイフンで始まらないパス指定等）の場合**:
-  - `out_config->target_path` をその文字列で上書き更新せよ。
+1. **トラップ1: ポインタなのにドット `.` を使ってしまう！**
+   - 引数が `GearConfig *out_config`（ポインタ）であるため、`out_config.command` と書くとコンパイルエラーになります。必ず `out_config->command` とアロー演算子を使ってください。
+2. **トラップ2: `memo` 引数チェックを怠りセグフォ！**
+   - `./gear memo` とだけ打たれた場合、`argc` は `2` であり、`argv[2]` は存在しません（アクセスすると即座にクラッシュ）。必ず `if (argc < 3 || argv[2][0] == '\0')` で防御してください。
+3. **トラップ3: `clean` のオプションループで `argv[1]` を巻き込む！**
+   - `argv[1]` は `"clean"` というサブコマンド自身です。追加のオプションは `argv[2]` 以降に並ぶため、ループは必ず `for (int i = 2; i < argc; i++)` で開始してください。
 
 ---
 
-### クリア手順（ターミナルで実行）
+## 🎯 【ボス戦クリア目標＆ステップ・バイ・ステップ写経ガイド】
 
-1. `arg_parser.c` を編集して未完成の `parse_args` 関数を実装せよ。
-2. ボス戦（自動採点スクリプト）に挑む：
+`Floor_06_SoulBlueprint/arg_parser.c` を開き、以下の手順で完成させよ。
+
+```c
+#include "config.h"
+#include <string.h>
+#include <stdio.h>
+
+int parse_args(int argc, char *argv[], GearConfig *out_config) {
+    // ステップ1: 引数の防御壁チェック
+    if (out_config == NULL || argc < 2) {
+        return -1;
+    }
+
+    // ステップ2: 構造体のゼロクリアとデフォルト値の設定
+    memset(out_config, 0, sizeof(GearConfig));
+    snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", "./dungeon_box");
+
+    const char *subcmd = argv[1];
+
+    // ステップ3: サブコマンド判定
+    // -h または --help
+    if (strcmp(subcmd, "-h") == 0 || strcmp(subcmd, "--help") == 0) {
+        out_config->command = CMD_HELP;
+        return 0;
+    }
+
+    // -v または --version
+    if (strcmp(subcmd, "-v") == 0 || strcmp(subcmd, "--version") == 0) {
+        out_config->command = CMD_VERSION;
+        return 0;
+    }
+
+    // stat コマンド
+    if (strcmp(subcmd, "stat") == 0) {
+        out_config->command = CMD_STAT;
+        return 0;
+    }
+
+    // memo コマンド
+    if (strcmp(subcmd, "memo") == 0) {
+        out_config->command = CMD_MEMO;
+        if (argc < 3 || argv[2][0] == '\0') {
+            return -1; // メモ文字列が無いか空文字ならエラー
+        }
+        snprintf(out_config->memo_text, sizeof(out_config->memo_text), "%s", argv[2]);
+        return 0;
+    }
+
+    // clean コマンド
+    if (strcmp(subcmd, "clean") == 0) {
+        out_config->command = CMD_CLEAN;
+        // argv[2] 以降のオプション引数を順次解析
+        for (int i = 2; i < argc; i++) {
+            if (strcmp(argv[i], "--dry-run") == 0) {
+                out_config->dry_run = true;
+            } else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+                out_config->verbose = true;
+            } else {
+                // それ以外の引数は対象ディレクトリパスとして上書き
+                snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", argv[i]);
+            }
+        }
+        return 0;
+    }
+
+    // 未知のサブコマンド
+    return -1;
+}
+```
+
+---
+
+## 4. クリア手順（ターミナルで実行）
+
+1. 模範解答でテスト（事前検証）：
+   ```bash
+   ./test.sh --solution
+   ```
+   `【判定】 CLEARED!` と表示されることを確認せよ。
+
+2. 受講者用コード `arg_parser.c` を編集：
+   ガイドに従って引数解析関数を完成させよ。
+
+3. ボス戦（自動採点スクリプト）に挑む：
    ```bash
    ./test.sh
    ```
-3. コマンドライン引数の各パターンを網羅した単体テストが実行され、緑色の文字で `【判定】 CLEARED!` と表示されれば第6層突破だ！
-
+   全6パターンの単体テストに合格し、緑色の文字で `【判定】 CLEARED!` が出れば第6層突破だ！
