@@ -1,0 +1,5473 @@
+================================================================================
+  SAO: KERNEL - FULL PROJECT REPOSITORY & SOURCE CODE ARCHIVE
+  Generated At: 2026-10-16 19:30:03
+================================================================================
+
+## 1. プロジェクト概要 & 現状ステータス
+- リポジトリ: https://github.com/IRUMI163/sao-kernel.git
+- ブランチ: main (全11件のPRマージ完了・最新状態)
+- 実装完了モジュール:
+  * Floor 01: 転移門広場 (標準入出力 / 型 / フォーマット指定子)
+  * Floor 02: 迷いの森 (制御構文 / argc/argv / 早期リターン)
+  * Floor 03: 白銀の牢獄 (配列 / 終端文字 / safe_str_copy)
+  * Floor 04: 迷宮区の製図室 (関数分割 / ヘッダ / インクルードガード / Makefile)
+  * Floor 05: 最深の深淵 (ポインタ / アドレス / ASanデバッグ)
+  * Floor 06: 魂の設計図 (構造体 / GearConfig / 引数パース)
+  * Floor 07: 記憶の断頭台 (動的メモリ malloc/free / FileList)
+  * Floor 08: 外界回廊 (ファイルI/O / ディレクトリ走査 / cleaner / memo)
+  * Floor 09: 堅牢なる城壁 (stderr / errno / 異常系防御)
+  * Floor 10: 紅玉宮 (最適化 -O2 / 統合ビルド / デプロイ)
+  * gear/   : 0.001秒起動 万能CLIツール本体 (stat, memo, clean)
+  * docs/   : README.md, INSTRUCTOR_GUIDE.md, AGENTS.md, SPECIFICATION.md
+- 全テスト検証結果:
+  * 全10フロアの初期コード (./test.sh) -> 全件 終了コード 1 (FAILED: 意図通りの未完成)
+  * 全10フロアの模範解答 (./test.sh --solution) -> 全件 終了コード 0 (CLEARED!)
+  * ルート Makefile (make test-solutions) -> 全フロア一括PASS
+  * gear/ E2Eテスト (gear/test_gear.sh) -> AddressSanitizerノーエラー完全PASS
+
+--------------------------------------------------------------------------------
+## 2. 管理ファイル一覧 (git ls-files)
+--------------------------------------------------------------------------------
+.antigravity/rules
+.gitignore
+AGENTS.md
+Floor_01_Gate/.solution/main.c
+Floor_01_Gate/MISSION.md
+Floor_01_Gate/main.c
+Floor_01_Gate/test.sh
+Floor_02_Labyrinth/.solution/main.c
+Floor_02_Labyrinth/MISSION.md
+Floor_02_Labyrinth/main.c
+Floor_02_Labyrinth/test.sh
+Floor_03_SilverPrison/.solution/safe_str.c
+Floor_03_SilverPrison/MISSION.md
+Floor_03_SilverPrison/main.c
+Floor_03_SilverPrison/safe_str.c
+Floor_03_SilverPrison/safe_str.h
+Floor_03_SilverPrison/test.sh
+Floor_04_DraftingRoom/.solution/Makefile
+Floor_04_DraftingRoom/.solution/calc.c
+Floor_04_DraftingRoom/.solution/calc.h
+Floor_04_DraftingRoom/MISSION.md
+Floor_04_DraftingRoom/Makefile
+Floor_04_DraftingRoom/calc.c
+Floor_04_DraftingRoom/calc.h
+Floor_04_DraftingRoom/main.c
+Floor_04_DraftingRoom/test.sh
+Floor_05_Abyss/.solution/main.c
+Floor_05_Abyss/MISSION.md
+Floor_05_Abyss/main.c
+Floor_05_Abyss/test.sh
+Floor_06_SoulBlueprint/.solution/arg_parser.c
+Floor_06_SoulBlueprint/MISSION.md
+Floor_06_SoulBlueprint/arg_parser.c
+Floor_06_SoulBlueprint/main.c
+Floor_06_SoulBlueprint/test.sh
+Floor_07_Guillotine/.solution/file_list.c
+Floor_07_Guillotine/MISSION.md
+Floor_07_Guillotine/file_list.c
+Floor_07_Guillotine/main.c
+Floor_07_Guillotine/test.sh
+Floor_08_OuterCorridor/.solution/cleaner.c
+Floor_08_OuterCorridor/MISSION.md
+Floor_08_OuterCorridor/cleaner.c
+Floor_08_OuterCorridor/main.c
+Floor_08_OuterCorridor/setup_sandbox.sh
+Floor_08_OuterCorridor/test.sh
+Floor_09_IronWall/.solution/main.c
+Floor_09_IronWall/MISSION.md
+Floor_09_IronWall/main.c
+Floor_09_IronWall/test.sh
+Floor_10_RubyPalace/.solution/main.c
+Floor_10_RubyPalace/MISSION.md
+Floor_10_RubyPalace/main.c
+Floor_10_RubyPalace/test.sh
+Makefile
+README.md
+SPECIFICATION.md
+docs/INSTRUCTOR_GUIDE.md
+gear/Makefile
+gear/include/config.h
+gear/include/file_list.h
+gear/include/gear.h
+gear/include/safe_str.h
+gear/src/arg_parser.c
+gear/src/cmd_clean.c
+gear/src/cmd_memo.c
+gear/src/cmd_stat.c
+gear/src/file_list.c
+gear/src/main.c
+gear/src/safe_str.c
+gear/test_gear.sh
+shared/sao_ui.h
+shared/test_helper.sh
+
+--------------------------------------------------------------------------------
+## 3. 全ファイル完全ソースコード & ドキュメント
+--------------------------------------------------------------------------------
+
+================================================================================
+FILE: .antigravity/rules
+================================================================================
+# Role: Akihiko Kayaba (SAO: Kernel Game Master & Lead Architect)
+
+## 1. Character & Tone
+- あなたは『ソードアート・オンライン』の設計者であり、浮遊城アインクラッドの支配者「茅場晶彦（ヒースクリフ）」です。
+- 受講生（プレイヤー）に対し、知的で冷静沈着、威厳がありながらも「技術の深淵へ挑む者」には確かな敬意と情熱を持って接してください。
+- 一人称は「私」、受講生のことは「プレイヤー諸君」または「君」と呼んでください。
+- 解説時は単なる文法の暗記ではなく、「なぜC言語やOSカーネルはそのように設計されているのか（メモリの物理的構造やUNIX哲学）」という本質を語ってください。
+
+## 2. Pedagogical Rules (指導原則：答えの丸投げ厳禁)
+- 通常時、完成した解答コードをそのまま提示することは固く禁じます。`.solution/` ディレクトリの中身を直接見せることも禁止です。
+- プレイヤーが詰まっている場合は、エラーメッセージの着目点や「そのポインタはいまメモリ上のどこを指しているかね？」といったソクラテス式問答で導き、最後の1行はプレイヤー自身に書かせてください。
+
+## 3. Phase-Based Behavior & "[自主練]" Trigger
+- **第1層〜第2層（Floor_01 〜 Floor_02）**: バグ混入禁止期間。意図的なバグを含んだコードは提示せず、コンパイルが通り動く喜びを体験させてください。
+- **第3層〜第10層（プレイヤーが `[自主練]` と宣言した時のみ発動）**:
+  プレイヤーが `[自主練]` というキーワードを含めてコード例を求めた場合のみ、その階層のテーマに応じた致命的なバグ（終端 `\0` 忘れ、Off-by-One、`free()` 漏れ、`fclose()` 漏れ、値渡しミスなど）を1つだけ巧妙に紛れ込ませたCコードを提示し、「私の書いたこのロジックに問題がないか、君の鑑識眼（Audit）で検分してみたまえ」と問いかけてください。見抜けた場合は最大級に称賛してください。
+
+## 4. Academic Evaluation Output (学マス風 ステータス評価フォーマット)
+プレイヤーがコードを提示した際やクリア報告をした際は、回答末尾に必ず以下の評価パネルを出力してください。
+
+---
+### 📊 【AINCRAD SYSTEM : PLAYER EVALUATION】
+- **Logic（論理構造）** : [ S / A / B / C ] — (早期リターン、制御構造、可読性に関する1行講評)
+- **Memory（メモリ感覚）**: [ S / A / B / C ] — (ポインタ、バッファ境界、リソース解放に関する1行講評)
+- **Audit（AI鑑識眼）**   : [ S / A / B / C ] — (仕様理解度、エッジケースへの気づき、バグ看破力に関する1行講評)
+- **Instructor's Comment**: 「（茅場晶彦の口調での総評と、次なるステップへの示唆）」
+---
+
+
+================================================================================
+FILE: .gitignore
+================================================================================
+# Build artifacts
+*.o
+*.out
+*.exe
+*.dSYM/
+floor_runner
+gear/gear
+bin/
+
+# Sandbox & Runtime files
+dungeon_box/
+.sao_progress
+.gear_memo.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+
+================================================================================
+FILE: AGENTS.md
+================================================================================
+# AGENTS.md - Strict Rules for Parallel AI Agents (Jules 3.6)
+
+このリポジトリは11台のAIエージェントで並列開発されています。以下のルールを**1文字も違えず厳守**してください。
+
+## 1. 【最重要】ディレクトリ隔離原則（Gitコンフリクト防止）
+- あなたはプロンプトで指定された**単一のディレクトリ（または単一のファイル）のみ**を作成・編集してください。
+- ルートディレクトリの `Makefile`、`AGENTS.md`、`SPECIFICATION.md`、`shared/`、および他フロアのファイルには**絶対に手を触れないでください**（PRマージ時にコンフリクトが発生するため）。
+
+## 2. 教材フロアの「2重構造（Skeleton & Solution）」ルール
+各フロア（`Floor_XX_Name/`）には必ず以下の4点セットを作成してください。
+1. `MISSION.md` : `Floor_01_Gate/MISSION.md` と同等の熱量・文字数（最低120行以上）で、茅場晶彦の導入セリフ、C言語文法の図解解説、業界用語辞典、実装仕様を記述すること。省略は厳禁。
+2. `main.c`（または課題 `.c`）: **受講者用の未完成コード**。`/* TODO: ... */` を残し、そのまま `./test.sh` を実行すると **必ず FAIL（終了コード 1）** になるようにすること。
+3. `.solution/` 配下の同名ファイル: **完全な模範解答コード**。`./test.sh --solution` を実行すると **必ず PASS（終了コード 0）** になるようにすること。
+4. `test.sh` : `chmod +x` を付与し、`source ../shared/test_helper.sh "$1"` を読み込む自動採点スクリプト。
+
+## 3. コンパイル＆検証の絶対条件（PR作成前の義務）
+作業完了時、必ず担当ディレクトリ内で以下の2つのコマンドを実行し、両方とも期待通りに動くことを確認してからコミットせよ。
+- `./test.sh` ➔ **FAILED（終了コード 1）** になることを確認（未完成コードのため）
+- `./test.sh --solution` ➔ **CLEARED!（終了コード 0）** になることを確認（模範解答のため）
+- ※ 注意：テスト実行によって生成された `.sao_progress` やバイナリ（`floor_runner` 等）は、必ず `rm -f` で削除してから `git add` すること！
+
+
+================================================================================
+FILE: Floor_01_Gate/.solution/main.c
+================================================================================
+#include <stdio.h>
+#include "../../shared/sao_ui.h"
+
+int main(void) {
+    const char *player_name = "KIRITO";
+    int level = 1;
+    int hp_current = 250;
+    int hp_max = 250;
+    double storage_used = 42.5;
+
+    SAO_PRINT_HEADER("STATUS WINDOW");
+
+    printf("PLAYER : %s\n", player_name);
+    printf("LEVEL  : %04d\n", level);
+    printf("HP     : %04d / %04d\n", hp_current, hp_max);
+    printf("STORAGE: %.1f%% USED\n", storage_used);
+
+    SAO_PRINT_FOOTER();
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_01_Gate/MISSION.md
+================================================================================
+# 【第1層：転移門広場】〜黒い画面の洗礼〜
+
+> **茅場晶彦からのシステム通達**:
+> 「ようこそ、電脳の最下層へ。君たちの旅はここから始まる。
+> 目の前の『黒い画面（ターミナル）』を恐れるな。マウスでアイコンをクリックするだけの受動的な世界に別れを告げ、自らの言葉（コード）を機械語へとコンパイルし、このアインクラッドに君自身の存在を刻み込むのだ」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① `#include` と `main` 関数（すべての始まり）
+C言語のプログラムは、必ず `main` という名前の関数から実行が開始されます。画面に文字を表示するための標準道具箱 `<stdio.h>`（Standard Input/Output Header）を冒頭で読み込みます。
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    printf("Link Start!\n");
+    return 0; // OSに「正常終了（エラーなし）」を伝える数値
+}
+```
+
+### ② データ型とフォーマット指定子（型にはめる美学）
+C言語では、扱うデータの種類（型）を明確に宣言しなければなりません。また、`printf` で変数を表示する際は「どんな形式で埋め込むか」を指定する**フォーマット指定子**を使います。
+
+| データ型 | 意味 | `printf` 指定子 | 応用テクニック（桁揃え・小数制御） |
+| :--- | :--- | :--- | :--- |
+| `const char *` | 文字列 | `%s` | `"%s"` で文字列をそのまま埋め込む |
+| `int` | 整数 | `%d` | `"%04d"` と書くと `4` 桁のゼロ埋め（例: `0001`）になる |
+| `double` | 倍精度実数（小数） | `%f` | `"%.1f"` と書くと小数点以下 `1` 桁まで表示（例: `42.5`） |
+
+> 💡 **注意**: `printf` の中で `%` という記号そのものを画面に表示したい場合は、`%%` と2つ続けて記述します（例: `"%.1f%%\n"` ➔ `42.5%`）。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **CLI（Command Line Interface / 黒い画面）**:
+  文字（コマンド）だけでコンピュータに命令を下す画面のこと。GUI（マウス操作）よりも圧倒的に高速で、自動化が容易なためプロの現場では必須となる。
+- **コンパイル（Compile）とバイナリ（Binary）**:
+  人間が書いたC言語のソースコード（`.c`）は、そのままではCPUには理解できない。コンパイラ（`gcc` や `clang`）を使って、CPUが直接実行できる「0と1の機械語ファイル（バイナリ）」に翻訳する作業をコンパイルと呼ぶ。
+- **標準出力（stdout）と終了ステータス（Exit Status）**:
+  プログラムが画面に出す通常の文字出力を `stdout` と呼ぶ。そして `main` 関数の最後にある `return 0;` は、プログラム終了時にOSへ返す「終了コード（0＝成功、0以外＝異常終了）」である。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+このディレクトリにある `main.c` を開き、`/* TODO */` の箇所を実装してプレイヤーの初期ステータス画面を出力せよ。
+ここで作るステータス表示フォーマットは、のちに最終成果物『`gear stat`』コマンドの画面描画エンジンとしてそのまま合流する。
+
+### 要求される出力フォーマット（1文字の狂いも許されない）
+以下の6行がそのまま出力されるように `main.c` を完成させよ。
+
+```text
+==================================================
+  [AINCRAD SYSTEM] : STATUS WINDOW
+==================================================
+PLAYER : KIRITO
+LEVEL  : 0001
+HP     : 0250 / 0250
+STORAGE: 42.5% USED
+==================================================
+```
+
+### クリア手順（ターミナルで実行）
+1. 手動でコンパイルして出力を確かめる場合：
+   ```bash
+   gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c
+   ./floor_runner
+   ```
+2. ボス戦（自動採点スクリプト）に挑む場合：
+   ```bash
+   ./test.sh
+   ```
+   緑色の文字で `【判定】 CLEARED!` と表示されれば第1層突破だ！
+
+
+================================================================================
+FILE: Floor_01_Gate/main.c
+================================================================================
+#include <stdio.h>
+#include "../shared/sao_ui.h"
+
+int main(void) {
+    const char *player_name = "KIRITO";
+    int level = 1;
+    int hp_current = 250;
+    int hp_max = 250;
+    double storage_used = 42.5;
+
+    SAO_PRINT_HEADER("STATUS WINDOW");
+
+    /* TODO: MISSION.md の仕様に従い、以下の4項目をフォーマット指定子を使って出力せよ
+     * 1. PLAYER : KIRITO         (%s を使用)
+     * 2. LEVEL  : 0001           (%04d を使用して4桁ゼロ埋め)
+     * 3. HP     : 0250 / 0250    (%04d を2つ使用)
+     * 4. STORAGE: 42.5% USED     (%.1f%% を使用して小数第1位＋%記号を表示)
+     */
+    (void)player_name;
+    (void)level;
+    (void)hp_current;
+    (void)hp_max;
+    (void)storage_used;
+
+    SAO_PRINT_FOOTER();
+
+    /* TODO: 正常終了を示す終了コード（0）を返せ */
+    return 1;
+}
+
+
+================================================================================
+FILE: Floor_01_Gate/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "01" "転移門広場 (The Gate of Aincrad)"
+
+SRC_FILE="main.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/main.c"
+fi
+
+# 1. コンパイルチェック
+gcc -std=c11 -Wall -Wextra -Werror -o floor_runner "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告（未使用変数など）を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror) 成功"
+
+# 2. 終了ステータスチェック
+OUTPUT=$(./floor_runner)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "main関数の終了コードが 0 ではない (現在の返り値: ${RET_CODE})。"
+fi
+sao_pass "Test 2: 正常終了ステータス (return 0) を確認"
+
+# 3. 出力フォーマット完全一致チェック
+EXPECTED="==================================================
+  [AINCRAD SYSTEM] : STATUS WINDOW
+==================================================
+PLAYER : KIRITO
+LEVEL  : 0001
+HP     : 0250 / 0250
+STORAGE: 42.5% USED
+=================================================="
+
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "出力フォーマットが仕様と一致しない。スペースの数やゼロ埋め桁数を確認せよ。"
+fi
+sao_pass "Test 3: ステータスウィンドウ出力フォーマット完全一致"
+
+rm -f floor_runner
+sao_complete "Floor_01_Gate"
+
+
+================================================================================
+FILE: Floor_02_Labyrinth/.solution/main.c
+================================================================================
+#include <stdio.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    /* 1. 引数が存在しない場合 */
+    if (argc < 2) {
+        printf("[ERROR] NO COMMAND SPECIFIED\n");
+        return 1;
+    }
+
+    /* 2. -h オプション */
+    if (strcmp(argv[1], "-h") == 0) {
+        printf("USAGE: gear <stat|memo|clean> [options]\n");
+        return 0;
+    }
+
+    /* 3. -v オプション */
+    if (strcmp(argv[1], "-v") == 0) {
+        printf("GEAR VERSION 1.0.0-aincrad\n");
+        return 0;
+    }
+
+    /* 4. memo コマンド */
+    if (strcmp(argv[1], "memo") == 0) {
+        if (argc < 3) {
+            printf("[ERROR] EMPTY MEMO\n");
+            return 1;
+        }
+
+        printf("MEMO: ");
+        for (int i = 2; i < argc; i++) {
+            printf("%s", argv[i]);
+            if (i < argc - 1) {
+                printf(" ");
+            }
+        }
+        printf("\n");
+        return 0;
+    }
+
+    /* 5. 未知のコマンド */
+    printf("[ERROR] UNKNOWN COMMAND: %s\n", argv[1]);
+    return 1;
+}
+
+
+================================================================================
+FILE: Floor_02_Labyrinth/MISSION.md
+================================================================================
+# 【第2層：迷いの森】〜分岐と反復の檻〜
+
+> **茅場晶彦からのシステム通達**:
+> 「第1層の単純な一本道を破り、ようこそ第2層『迷いの森』へ。
+> ここからの世界は、二度と同じ表情を見せない。与えられた入力（引数）に応じ、プログラムは自ら道を判断し、条件に応じて幾重にも分岐しなければならない。
+> 静的な出力を繰り返すだけのコードは、ここでは一歩も前進できず消滅する。条件分岐 `if-else` と反復 `for` を手に入れ、プログラムに『思考する意志』を吹き込むのだ」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① コマンドライン引数（`int argc, char *argv[]`）
+C言語の `main` 関数は、起動時にコマンドラインから渡された引数を受け取ることができます。
+
+```c
+int main(int argc, char *argv[]) {
+    // argc : 引数の個数 (Argument Count)
+    // argv : 引数文字列の配列 (Argument Vector)
+}
+```
+
+- **`argc` (Argument Count)**: プログラム名自体を含む引数の総数（整数値）です。
+  - 例: `./floor_runner -h` と実行した場合、`argc` は `2` になります。
+- **`argv` (Argument Vector)**: 各引数文字列へのポインタ配列です。
+  - `argv[0]` : 実行されたプログラムのパス（例: `"./floor_runner"`）
+  - `argv[1]` : 第1引数（例: `"-h"`）
+  - `argv[2]` : 第2引数（例: `"memo"`）
+
+> ⚠️ **重要**: `argv[argc]` は常に `NULL` です。存在しない `argv[1]` にアクセスしようとするとセグメンテーション違反（クラッシュ）の原因になります。必ず事前に `argc` の値をチェックしてください。
+
+---
+
+### ② 文字列の等価比較（`strcmp` 関数と `<string.h>`）
+C言語では、`argv[1] == "-h"` のように `==` 演算子で文字列の内容同士を直接比較することはできません（アドレスの比較になってしまいます）。
+文字列の内容が一致しているかを調べるには、`<string.h>` ヘッダをインクルードし、`strcmp` 関数（String Compare）を使用します。
+
+```c
+#include <string.h>
+
+if (strcmp(argv[1], "-h") == 0) {
+    // argv[1] と "-h" が完全に一致する場合（返り値が 0）
+}
+```
+
+| 比較結果 | `strcmp(s1, s2)` の返り値 | 意味 |
+| :--- | :--- | :--- |
+| `s1` と `s2` が完全一致 | `0` | 両方の文字列が等しい |
+| `s1` が `s2` より辞書順で前 | 負の値（`< 0`） | `s1` の方が小さい |
+| `s1` が `s2` より辞書順で後 | 正の値（`> 0`） | `s1` の方が大きい |
+
+---
+
+### ③ 条件分岐（`if-else`）と 早期リターン（Early Return）
+プログラムのガード節として「異常な入力や特定の操作」を関数の冒頭で検知し、すぐに処理を終了して抜け出す手法を**早期リターン（Early Return）**と呼びます。
+
+```c
+// 1. 引数が存在しない場合のガード（早期リターン）
+if (argc < 2) {
+    printf("[ERROR] NO COMMAND SPECIFIED\n");
+    return 1; // エラー終了
+}
+
+// 2. 引数に応じた分岐処理
+if (strcmp(argv[1], "-h") == 0) {
+    printf("USAGE: ...\n");
+    return 0; // 成功終了
+}
+```
+
+ネスト（深くなる条件分岐）を避け、コードの可読性と保守性を劇的に向上させるプロの必須テクニックです。
+
+---
+
+### ④ 反復処理（`for` ループ）による可変長引数の連結
+可変個の引数を順番に処理したい場合は `for` ループを使用します。
+
+```c
+for (int i = 2; i < argc; i++) {
+    printf("%s", argv[i]);
+    if (i < argc - 1) {
+        printf(" "); // 最後の要素以外はスペースを入れる
+    }
+}
+printf("\n");
+```
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **パース（引数解析 / Argument Parsing）**:
+  ユーザーがコマンドラインに入力した生の文字列群（`argv`）を解析し、プログラムが理解できる命令やオプション構造体に変換する処理のこと。
+- **早期リターン（Early Return）**:
+  関数の処理冒頭でエラーや特殊条件をチェックし、条件に該当した時点で即座に `return` して関数を抜ける実装パターン。ネストが浅くなり可読性が上がる。
+- **エッジケース（Edge Case）**:
+  引数が0個、空文字列、境界値、予期せぬ入力など、通常の操作手順から外れた極端または特殊な状況のこと。堅牢なソフトウェア開発ではエッジケースのハンドリングが不可欠。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+この階層の `main.c` を編集し、将来の万能CLIツール `gear` のコマンドライン引数解析（パース）エンジンを作成せよ。
+
+### コマンドライン引数と出力の要求仕様
+
+プログラム実行時の第1引数（`argv[1]`）の内容に応じて、以下の通り分岐・出力・終了コード制御を行わなければならない。
+
+#### 1. 引数なし（`argc < 2`）
+- **標準出力**: `[ERROR] NO COMMAND SPECIFIED`
+- **終了コード**: `1`
+
+#### 2. ヘルプオプション（`./floor_runner -h`）
+- **条件**: `strcmp(argv[1], "-h") == 0`
+- **標準出力**: `USAGE: gear <stat|memo|clean> [options]`
+- **終了コード**: `0`
+
+#### 3. バージョン表示（`./floor_runner -v`）
+- **条件**: `strcmp(argv[1], "-v") == 0`
+- **標準出力**: `GEAR VERSION 1.0.0-aincrad`
+- **終了コード**: `0`
+
+#### 4. メモ記録コマンド（`./floor_runner memo <単語1> <単語2> ...`）
+- **条件**: `strcmp(argv[1], "memo") == 0`
+- **引数ありの場合（`argc >= 3`）**:
+  - 第3引数以降（`argv[2]`, `argv[3]`, ...）を半角スペース1つで連結し、冒頭に `MEMO: ` を付けて出力する。
+  - 例: `./floor_runner memo hello world sword art`
+  - 出力: `MEMO: hello world sword art`
+  - **終了コード**: `0`
+- **引数なしの場合（`argc == 2`、つまり `memo` の後ろに単語がない場合）**:
+  - **標準出力**: `[ERROR] EMPTY MEMO`
+  - **終了コード**: `1`
+
+#### 5. 未知のコマンド（それ以外の全ての引数）
+- **標準出力**: `[ERROR] UNKNOWN COMMAND: <argv[1]>`
+  - 例: `./floor_runner invalid` ➔ `[ERROR] UNKNOWN COMMAND: invalid`
+- **終了コード**: `1`
+
+---
+
+### クリア手順（ターミナルで実行）
+
+1. 手動でコンパイルして試す場合：
+   ```bash
+   gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c
+   ./floor_runner
+   ./floor_runner -h
+   ./floor_runner -v
+   ./floor_runner memo test message
+   ./floor_runner memo
+   ./floor_runner unknown
+   ```
+
+2. ボス戦（自動採点スクリプト）に挑む場合：
+   ```bash
+   ./test.sh
+   ```
+   全テスト項目をパスし、緑色の文字で `【判定】 CLEARED!` と表示されれば第2層突破だ！
+
+
+================================================================================
+FILE: Floor_02_Labyrinth/main.c
+================================================================================
+#include <stdio.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
+
+    /* TODO: MISSION.md の仕様に従い、コマンドライン引数パースエンジンを実装せよ。
+     *
+     * 1. 引数が存在しない場合 (argc < 2):
+     *    "[ERROR] NO COMMAND SPECIFIED" と標準出力し、終了コード 1 で早期リターン。
+     *
+     * 2. "./floor_runner -h" の場合 (strcmp(argv[1], "-h") == 0):
+     *    "USAGE: gear <stat|memo|clean> [options]" と標準出力し、終了コード 0 で早期リターン。
+     *
+     * 3. "./floor_runner -v" の場合 (strcmp(argv[1], "-v") == 0):
+     *    "GEAR VERSION 1.0.0-aincrad" と標準出力し、終了コード 0 で早期リターン。
+     *
+     * 4. "./floor_runner memo <単語1> <単語2> ..." の場合 (strcmp(argv[1], "memo") == 0):
+     *    - 単語が存在しない場合 (argc == 2):
+     *      "[ERROR] EMPTY MEMO" と標準出力し、終了コード 1 で早期リターン。
+     *    - 単語が存在する場合 (argc >= 3):
+     *      "MEMO: <単語1> <単語2> ..." と第3引数以降をスペース区切りで出力し、終了コード 0 で早期リターン。
+     *
+     * 5. それ以外の未知のコマンドの場合:
+     *    "[ERROR] UNKNOWN COMMAND: <argv[1]>" と標準出力し、終了コード 1 で早期リターン。
+     */
+
+    return 1;
+}
+
+
+================================================================================
+FILE: Floor_02_Labyrinth/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "02" "迷いの森 (The Labyrinth)"
+
+SRC_FILE="main.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/main.c"
+fi
+
+# 1. コンパイルチェック
+gcc -std=c11 -Wall -Wextra -Werror -o floor_runner "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告（未使用変数など）を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror) 成功"
+
+# 2. 引数なしチェック
+OUTPUT=$(./floor_runner)
+RET_CODE=$?
+if [ $RET_CODE -ne 1 ]; then
+    rm -f floor_runner
+    sao_fail "引数なしの時の終了コードが 1 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="[ERROR] NO COMMAND SPECIFIED"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "引数なしの時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 2: 引数なし ([ERROR] NO COMMAND SPECIFIED / exit 1) 成功"
+
+# 3. -h オプションチェック
+OUTPUT=$(./floor_runner -h)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "-h オプション実行時の終了コードが 0 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="USAGE: gear <stat|memo|clean> [options]"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "-h オプション実行時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 3: -h オプション (USAGE: ... / exit 0) 成功"
+
+# 4. -v オプションチェック
+OUTPUT=$(./floor_runner -v)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "-v オプション実行時の終了コードが 0 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="GEAR VERSION 1.0.0-aincrad"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "-v オプション実行時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 4: -v オプション (GEAR VERSION 1.0.0-aincrad / exit 0) 成功"
+
+# 5. memo コマンドチェック（正常系）
+OUTPUT=$(./floor_runner memo hello world sword art)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "memo コマンド実行時の終了コードが 0 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="MEMO: hello world sword art"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "memo コマンド実行時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 5: memo コマンド (MEMO: hello world sword art / exit 0) 成功"
+
+# 6. memo コマンドチェック（引数なしエラー系）
+OUTPUT=$(./floor_runner memo)
+RET_CODE=$?
+if [ $RET_CODE -ne 1 ]; then
+    rm -f floor_runner
+    sao_fail "空の memo コマンド実行時の終了コードが 1 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="[ERROR] EMPTY MEMO"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "空の memo コマンド実行時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 6: memo 空引数 ([ERROR] EMPTY MEMO / exit 1) 成功"
+
+# 7. 未知のコマンドチェック
+OUTPUT=$(./floor_runner unknown_cmd)
+RET_CODE=$?
+if [ $RET_CODE -ne 1 ]; then
+    rm -f floor_runner
+    sao_fail "未知のコマンド実行時の終了コードが 1 ではない (返り値: ${RET_CODE})"
+fi
+EXPECTED="[ERROR] UNKNOWN COMMAND: unknown_cmd"
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "未知のコマンド実行時の出力メッセージが仕様と一致しない。"
+fi
+sao_pass "Test 7: 未知のコマンド ([ERROR] UNKNOWN COMMAND: ... / exit 1) 成功"
+
+rm -f floor_runner
+sao_complete "Floor_02_Labyrinth"
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/.solution/safe_str.c
+================================================================================
+#include <string.h>
+#include "safe_str.h"
+
+int safe_str_copy(char *dest, size_t dest_size, const char *src) {
+    if (!dest || !src || dest_size == 0) {
+        return -1;
+    }
+
+    size_t src_len = strlen(src);
+    if (src_len < dest_size) {
+        memcpy(dest, src, src_len + 1);
+        return 0;
+    } else {
+        memcpy(dest, src, dest_size - 1);
+        dest[dest_size - 1] = '\0';
+        return 1;
+    }
+}
+
+int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file) {
+    if (!dest || !dir || !file || dest_size == 0) {
+        return -1;
+    }
+
+    size_t dir_len = strlen(dir);
+    size_t file_len = strlen(file);
+    int has_slash = (dir_len > 0 && dir[dir_len - 1] == '/');
+
+    size_t needed = dir_len + (has_slash ? 0 : 1) + file_len + 1;
+    if (needed > dest_size) {
+        return -1;
+    }
+
+    memcpy(dest, dir, dir_len);
+    size_t pos = dir_len;
+    if (!has_slash) {
+        dest[pos++] = '/';
+    }
+    memcpy(dest + pos, file, file_len);
+    pos += file_len;
+    dest[pos] = '\0';
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/MISSION.md
+================================================================================
+# 【第3層：白銀の牢獄】〜呪われし終端文字〜
+
+> **茅場晶彦からのシステム通達**:
+> 「ようこそ、第3層『白銀の牢獄』へ。
+> 君たちがこれまで扱ってきた変数は、広大なメモリ空間に浮かぶ単一の点に過ぎなかった。
+> しかし、ここ第3層で君たちが向き合うのは連続したメモリの領域——『配列』と『文字列』だ。
+>
+> C言語において、文字列という独立したデータ型は存在しない。
+> それは単なる `char` 型の配列であり、その終端を示すのは唯一無二の存在、終端文字 `\0` (ヌル文字) のみである。
+> もし君がこの小さな一文字を見失えば、プログラムは境界を突破し、隣接する未知の領域を食い荒らすだろう。
+> バッファオーバーフロー（BOF）——かつて世界中のシステムを崩壊させた呪いが、この牢獄で君たちを待っている。
+> 終端文字を制し、境界を守り抜く術を身につけよ。さもなくば、君たちのプログラムは二度と目覚めぬ眠りにつくことになるだろう」
+
+---
+
+## 💡 【自主練モードのご案内】
+この階層から、チャットで **`[自主練]`** と宣言すると、茅場AIがバグ入りのC言語コードを出題します！
+「バッファオーバーフロー」「オフバイワンエラー」「終端文字の欠落」など、危険なコードを見抜き、修正するトレーニングが可能です。
+ダンジョン攻略の合間にぜひ挑戦し、防御的プログラミングの腕を磨いてください。
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① 文字配列 `char buf[N]` と 終端文字 `\0`
+C言語における文字列は、`char` 型の要素がメモリ上に連続して並んだ配列です。
+文字列の終わりを識別するために、必ず末尾に `\0` (ASCIIコード `0`) を配置しなければなりません。
+
+```text
+[ 'S' ][ 'A' ][ 'O' ][ '\0' ][ ? ][ ? ]
+  0      1      2      3      4    5   (インデックス)
+```
+
+例えば `"SAO"` という3文字の文字列を格納するには、終端文字 `\0` の分の1バイトを含めて、最低でも **4バイト** の配列サイズが必要となります。
+
+```c
+char buf[4] = "SAO"; // OK: 'S', 'A', 'O', '\0' が格納される
+char bad[3] = "SAO"; // 危険: '\0' が入らず、文字列として破壊される！
+```
+
+---
+
+### ② バッファオーバーフロー（BOF）の脅威
+確保したメモリ領域（バッファ）を超えてデータを書き込んでしまう現象を **バッファオーバーフロー** と呼びます。
+古くから存在する危険な関数 `strcpy` や `strcat` は、コピー先のバッファサイズを検証しないため、容易にバッファオーバーフローを引き起こします。
+
+```c
+char dest[5];
+strcpy(dest, "EVERYDAY HERO"); // 超危険！ destの範囲を超えてメモリを破壊する
+```
+
+バッファオーバーフローが発生すると、プログラムのクラッシュ（Segmentation Fault）を引き起こすだけでなく、悪意ある第三者によってメモリ構造が書き換えられ、任意のコードを実行される脆弱性につながります。
+
+---
+
+### ③ オフバイワンエラー（Off-by-One Error）
+プログラマを悩ませる典型的なバグが、境界値を「1」だけ見誤る **オフバイワンエラー** です。
+
+```c
+char buf[10];
+// 10文字コピーしてしまい、'\0' を書くスペースがなくなる例
+for (int i = 0; i <= 10; i++) { // ループ回数が11回になってしまっている
+    buf[i] = src[i];
+}
+```
+
+特に「バッファサイズ `dest_size` に対して最大何文字コピーできるか？」を考える際、終端文字 `\0` のための1バイトを忘れると、容易にオフバイワンエラーが発生します。
+最大コピー可能文字数は常に **`dest_size - 1` 文字** です。
+
+---
+
+### ④ 入力のサニタイズと防御的プログラミング
+外部からの入力や関数の引数は、常に危険を孕んでいます。
+関数を設計する際は、以下のチェック（サニタイズ）を徹底する **防御的プログラミング** が不可欠です。
+
+1. **NULLポインタチェック**: `dest` や `src` が `NULL` でないか？
+2. **バッファサイズチェック**: `dest_size` が `0` でないか？
+3. **境界値の厳守**: コピー処理後、どのような場合でも必ず末尾に `\0` を付与する。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **バッファオーバーフロー (Buffer Overflow / BOF)**:
+  準備したメモリ領域（バッファ）を超えてデータが書き込まれ、隣接するメモリ領域が破損するセキュリティ脆弱性。
+- **オフバイワンエラー (Off-by-One Error)**:
+  ループの反復回数や配列のインデックス計算で「1」だけズレてしまう計算ミス。配列の領域外アクセスを引き起こす主原因。
+- **AddressSanitizer (ASan)**:
+  コンパイラ（GCC/Clang）の強力なメモリ検証ツール。`-fsanitize=address` オプションをつけてビルドすることで、境界外アクセスやメモリリークをリアルタイムに検知・報告してくれる。
+- **防御的プログラミング (Defensive Programming)**:
+  「引数にNULLが渡されるかもしれない」「バッファサイズが足りないかもしれない」といった不測の事態や誤用をあらかじめ想定し、安全装置（ガード条件）を組み込む設計手法。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+この階層では、将来的に万能CLIツール『`gear`』の文字列処理基盤となる安全な文字列操作ライブラリ `safe_str.c` を完成させます。
+
+`safe_str.h` の宣言に従い、`safe_str.c` 内の2つの関数を実装せよ。
+
+---
+
+### 関数の詳細仕様
+
+#### 1. `int safe_str_copy(char *dest, size_t dest_size, const char *src)`
+文字列 `src` をバッファ `dest` へ安全にコピーします。
+
+- **引数エラーチェック**:
+  - `dest == NULL` または `src == NULL` または `dest_size == 0` の場合、直ちに `-1` を返します。
+- **コピー動作**:
+  - `src` から最大 `dest_size - 1` 文字を `dest` にコピーします。
+  - **どのような場合でも、必ず `dest` の末尾（`dest[dest_size - 1]` または実際の文字数の直後）に `\0` を付与します。**
+- **戻り値**:
+  - 切り詰めが発生せずに完全にコピーできた場合: `0`
+  - バッファサイズ不足により切り詰め（Truncation）が発生した場合: `1`
+  - 引数エラー等の不整合が発生した場合: `-1`
+
+---
+
+#### 2. `int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file)`
+ディレクトリパス `dir` とファイル名 `file` を、間に `/` を挟んで結合し `dest` に格納します。
+
+- **引数エラーチェック**:
+  - `dest == NULL` または `dir == NULL` または `file == NULL` または `dest_size == 0` の場合、直ちに `-1` を返します。
+- **パス結合動作**:
+  - `dir` の末尾にすでに `/` が存在する場合は `/` を重複させず、そのまま `file` を結合します（例: `"/usr/local/"` + `"bin"` ➔ `"/usr/local/bin"`）。
+  - `dir` の末尾に `/` が存在しない場合は `/` を1つ挟んで結合します（例: `"/usr/local"` + `"bin"` ➔ `"/usr/local/bin"`）。
+- **バッファオーバーフロー防御**:
+  - 結合後の完全なパス（終端文字 `\0` を含む）が `dest_size` に収まらない場合は、`dest` を変更せず（またはコピーを中断し）直ちに `-1` を返します。
+  - 成功した場合は必ず末尾に `\0` を付与し、`0` を返します。
+
+---
+
+## 4. クリア手順（ターミナルで実行）
+
+1. 模範解答でテスト（事前検証）：
+   ```bash
+   ./test.sh --solution
+   ```
+   `【判定】 CLEARED!` と表示されることを確認せよ。
+
+2. 受講者用コード `safe_str.c` を編集して実装：
+   `/* TODO */` を解除し、`safe_str_copy` と `safe_path_join` を完成させよ。
+
+3. ボス戦（自動採点スクリプト）に挑む：
+   ```bash
+   ./test.sh
+   ```
+   ASanによるメモリ検証を通過し、緑色の文字で `【判定】 CLEARED!` が出れば第3層突破だ！
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/main.c
+================================================================================
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include "safe_str.h"
+
+int main(void) {
+    char buf[16];
+    int res;
+
+    printf("[TEST] Testing safe_str_copy...\n");
+
+    // 1. NULL parameter checks
+    assert(safe_str_copy(NULL, 10, "test") == -1);
+    assert(safe_str_copy(buf, 10, NULL) == -1);
+    assert(safe_str_copy(buf, 0, "test") == -1);
+
+    // 2. Normal copy (exact fit or smaller)
+    memset(buf, 'X', sizeof(buf));
+    res = safe_str_copy(buf, 10, "hello");
+    assert(res == 0);
+    assert(strcmp(buf, "hello") == 0);
+
+    // 3. Truncation copy
+    memset(buf, 'X', sizeof(buf));
+    res = safe_str_copy(buf, 5, "hello world");
+    assert(res == 1);
+    assert(strcmp(buf, "hell") == 0);
+    assert(buf[4] == '\0');
+
+    // 4. Boundary cases (dest_size == strlen(src) + 1 vs dest_size == strlen(src))
+    memset(buf, 'X', sizeof(buf));
+    res = safe_str_copy(buf, 6, "hello");
+    assert(res == 0);
+    assert(strcmp(buf, "hello") == 0);
+
+    memset(buf, 'X', sizeof(buf));
+    res = safe_str_copy(buf, 5, "hello");
+    assert(res == 1);
+    assert(strcmp(buf, "hell") == 0);
+
+    printf("[TEST] safe_str_copy passed.\n");
+
+    printf("[TEST] Testing safe_path_join...\n");
+
+    // 1. NULL parameter checks
+    assert(safe_path_join(NULL, 10, "dir", "file") == -1);
+    assert(safe_path_join(buf, 10, NULL, "file") == -1);
+    assert(safe_path_join(buf, 10, "dir", NULL) == -1);
+    assert(safe_path_join(buf, 0, "dir", "file") == -1);
+
+    // 2. Join without trailing slash in dir
+    memset(buf, 'X', sizeof(buf));
+    res = safe_path_join(buf, sizeof(buf), "/usr/local", "bin");
+    assert(res == 0);
+    assert(strcmp(buf, "/usr/local/bin") == 0);
+
+    // 3. Join with trailing slash in dir
+    memset(buf, 'X', sizeof(buf));
+    res = safe_path_join(buf, sizeof(buf), "/usr/local/", "bin");
+    assert(res == 0);
+    assert(strcmp(buf, "/usr/local/bin") == 0);
+
+    // 4. Buffer size insufficient
+    // "/usr/local/bin" requires 15 bytes including null terminator
+    memset(buf, 'X', sizeof(buf));
+    res = safe_path_join(buf, 14, "/usr/local", "bin");
+    assert(res == -1);
+
+    memset(buf, 'X', sizeof(buf));
+    res = safe_path_join(buf, 15, "/usr/local", "bin");
+    assert(res == 0);
+    assert(strcmp(buf, "/usr/local/bin") == 0);
+
+    printf("[TEST] safe_path_join passed.\n");
+
+    printf("ALL TESTS PASSED SUCCESSFULLY.\n");
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/safe_str.c
+================================================================================
+#include "safe_str.h"
+
+int safe_str_copy(char *dest, size_t dest_size, const char *src) {
+    /* TODO: Implement safe_str_copy */
+    (void)dest;
+    (void)dest_size;
+    (void)src;
+    return -1;
+}
+
+int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file) {
+    /* TODO: Implement safe_path_join */
+    (void)dest;
+    (void)dest_size;
+    (void)dir;
+    (void)file;
+    return -1;
+}
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/safe_str.h
+================================================================================
+#ifndef GEAR_SAFE_STR_H
+#define GEAR_SAFE_STR_H
+
+#include <stddef.h>
+
+int safe_str_copy(char *dest, size_t dest_size, const char *src);
+int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file);
+
+#endif /* GEAR_SAFE_STR_H */
+
+
+================================================================================
+FILE: Floor_03_SilverPrison/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "03" "白銀の牢獄 (Silver Prison)"
+
+SRC_FILE="safe_str.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/safe_str.c"
+fi
+
+# 1. コンパイル＆ASanビルドチェック
+gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address -g -I. -o floor_runner main.c "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror -fsanitize=address) 成功"
+
+# 2. テスト harness 実行と AddressSanitizer チェック
+OUTPUT=$(./floor_runner 2>&1)
+RET_CODE=$?
+
+if [ $RET_CODE -ne 0 ]; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "テストハーネスの実行に失敗した (終了コード: ${RET_CODE})。バッファオーバーフローやアサーション失敗を確認せよ。"
+fi
+
+if echo "$OUTPUT" | grep -q "AddressSanitizer"; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "AddressSanitizer エラーが検出された。メモリ破壊や境界外アクセスを見直したまえ。"
+fi
+
+sao_pass "Test 2: ASanエラー0件かつ全アサーション成功"
+
+rm -f floor_runner
+sao_complete "Floor_03_SilverPrison"
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/.solution/Makefile
+================================================================================
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wextra -Werror
+
+all: floor_runner
+
+floor_runner: main.o calc.o
+	$(CC) $(CFLAGS) -o floor_runner main.o calc.o
+
+main.o: main.c calc.h
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+calc.o: calc.c calc.h
+	$(CC) $(CFLAGS) -c calc.c -o calc.o
+
+clean:
+	rm -f *.o floor_runner
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/.solution/calc.c
+================================================================================
+#include "calc.h"
+
+int calc_storage_percent(long used, long total) {
+    if (total <= 0) {
+        return -1;
+    }
+    return (int)((used * 100) / total);
+}
+
+int calc_player_rank(int score) {
+    if (score >= 1000) {
+        return 3;
+    } else if (score >= 500) {
+        return 2;
+    } else if (score >= 100) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/.solution/calc.h
+================================================================================
+#ifndef CALC_H
+#define CALC_H
+
+int calc_storage_percent(long used, long total);
+int calc_player_rank(int score);
+
+#endif /* CALC_H */
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/MISSION.md
+================================================================================
+# 【第4層：迷宮区の製図室】〜職人の分離術〜
+
+> **茅場晶彦からのシステム通達**:
+> 「巨大な城郭アインクラッドを単一の設計図で記述することは不可能だ。
+> 優れた職人は、城壁、部屋、仕掛けの設計図をそれぞれ独立した羊皮紙に分割し、最後にひとつへと組み上げる。
+> 君たちのプログラムも同様だ。すべてのコードを単一のファイルに詰め込む雑な設計は、予期せぬ混乱とバグを招く。
+> この第4層『製図室』で、関数分割、プロトタイプ宣言、ヘッダファイル、そしてビルドを自動化する `Makefile` の技術を習得し、真の構造化設計を手にするのだ」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+これまでの階層では、単一の `.c` ファイル内にすべての処理（`main` 関数など）を記述してきました。
+しかし、プログラムの規模が大きくなると、コードの視認性が著しく低下し、複数人での開発や共通処理の再利用が困難になります。
+この層では、コードを機能ごとにファイル単位で分割・整理する「分割コンパイル」と「モジュール化」の手法を学びます。
+
+---
+
+### ① 関数分割とプロトタイプ宣言
+
+処理のかたまりを独立した「関数」として切り出すことを**関数分割**と呼びます。
+C言語では、コンパイラはコードを**上から下へ**順に読み進めます。そのため、ある関数 `A` の中で別の関数 `B` を呼び出す場合、原則として `B` の定義または宣言が `A` より前に存在しなければなりません。
+
+```c
+#include <stdio.h>
+
+// プロトタイプ宣言（関数の「看板」を前に立てておく）
+int calc_sum(int a, int b);
+
+int main(void) {
+    int total = calc_sum(10, 20); // コンパイラは関数の型と引数を知っているためOK
+    printf("Total: %d\n", total);
+    return 0;
+}
+
+// 関数の実体（本体）の定義
+int calc_sum(int a, int b) {
+    return a + b;
+}
+```
+
+#### プロトタイプ宣言とは？
+関数の名前、戻り値の型、引数の型・個数だけをコンパイラに事前に知らせる宣言です。
+プロトタイプ宣言があることで、関数の実体がコードの下部や**別のファイル**にあっても、コンパイラは型チェックを正しく行うことができます。
+
+---
+
+### ② ヘッダファイル（`.h`）と `#include`
+
+別の `.c` ファイルで定義された関数を呼び出したい場合、呼び出し側でその関数のプロトタイプ宣言が必要になります。
+しかし、利用する側のファイルごとに毎回手動でプロトタイプ宣言を書くのは非効率的でミスのもとです。
+
+そこで用いられるのが**ヘッダファイル（`.h`）**です。
+
+- **`calc.h`** : プロトタイプ宣言や定数定義、構造体宣言を記述する。
+- **`calc.c`** : `calc.h` で宣言された関数の「実際の処理（定義）」を記述する。
+- **`main.c`** : `#include "calc.h"` を書き、宣言された関数を利用する。
+
+#### `#include <...>` と `#include "..."` の違い
+| 形式 | 検索対象ディレクトリ | 主な用途 |
+| :--- | :--- | :--- |
+| `#include <stdio.h>` | システムの標準ライブラリディレクトリ | `stdio.h`, `stdlib.h`, `string.h` 等 |
+| `#include "calc.h"` | カレントディレクトリ（自作ファイルの場所） | 開発者が自作したヘッダファイル |
+
+---
+
+### ③ インクルードガード（`#ifndef`）の絶対的役割
+
+複数のファイルから同じヘッダファイルが間接的にインクルードされると、同一のプロトタイプ宣言や型定義が多重に読み込まれ、**多重定義エラー（Redefinition error）**が発生します。
+
+これを防止するための必須構造が**インクルードガード**です。
+
+```c
+#ifndef CALC_H
+#define CALC_H
+
+// ここにプロトタイプ宣言などを記述する
+int calc_storage_percent(long used, long total);
+int calc_player_rank(int score);
+
+#endif /* CALC_H */
+```
+
+#### 動作の仕組み
+1. 初めて `calc.h` が読み込まれたとき、マクロ `CALC_H` は未定義です（`#ifndef CALC_H` が真）。
+2. 直後の `#define CALC_H` により `CALC_H` が定義され、中身が処理されます。
+3. 同じビルド単位で2回目以降に `calc.h` が読み込まれると、`CALC_H` は既に定義されているため、`#ifndef CALC_H` から `#endif` までの内容がすべてスキップされます。
+
+---
+
+### ④ 分割コンパイルの仕組み
+
+C言語では、複数の `.c` ファイルを個別にコンパイルしてオブジェクトファイル（`.o`）を作成し、最後にそれらを結合して1つの実行ファイル（バイナリ）を生成します。
+
+```bash
+# 1. 各ソースファイルを個別コンパイル（-c オプションでオブジェクトファイル生成）
+gcc -std=c11 -Wall -Wextra -Werror -c main.c -o main.o
+gcc -std=c11 -Wall -Wextra -Werror -c calc.c -o calc.o
+
+# 2. オブジェクトファイルをリンクして実行ファイルを生成
+gcc main.o calc.o -o floor_runner
+```
+
+---
+
+### ⑤ `Makefile` の書き方とビルド自動化
+
+ソースファイルの数が増えると、手動で `gcc` コマンドを何度も打つのは困難になります。
+ビルド手順を自動化するツールが `make` であり、その設定ファイルが `Makefile` です。
+
+#### 構文規則
+```makefile
+ターゲット: 依存ファイル1 依存ファイル2
+	実行するコマンド（※行頭は必ず「TAB文字」でインデントする）
+```
+
+#### 代表的な `Makefile` 例
+```makefile
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wextra -Werror
+
+# デフォルトターゲット
+all: floor_runner
+
+# 最終バイナリの生成（リンカ）
+floor_runner: main.o calc.o
+	$(CC) $(CFLAGS) -o floor_runner main.o calc.o
+
+# 各オブジェクトファイルの生成（コンパイル）
+main.o: main.c calc.h
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+calc.o: calc.c calc.h
+	$(CC) $(CFLAGS) -c calc.c -o calc.o
+
+# クリーンアップルール
+clean:
+	rm -f *.o floor_runner
+```
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **リファクタリング（Refactoring）**:
+  プログラムの外部から見た挙動（出力結果）を変えることなく、内部のコード構造を整理・改善する作業のこと。関数の分割や重複コードの除去が含まれる。
+- **モジュール化（Modularization）**:
+  大規模なシステムを機能ごとに独立した部品（モジュール）に切り分けること。保守性、再利用性、テスト容易性が飛躍的に向上する。
+- **リンカ（Linker）**:
+  コンパイルによって生成された複数のオブジェクトファイル（`.o`）やライブラリを結合し、1つの実行可能ファイル（バイナリ）を作成するプログラムのこと。関数の呼び出し元と呼び出し先のนี่アドレスを結びつける（リンクする）。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+この階層では、計算モジュール `calc` の設計・分割を行います。
+
+### 担当ファイル構造
+- `calc.h` : 受講者用ヘッダファイル。インクルードガードとプロトタイプ宣言が欠落している（`/* TODO */` を補完すること）。
+- `calc.c` : 受講者用実装ファイル。関数内部が未完成（`/* TODO */` を補完すること）。
+- `main.c` : 完成済みエントリポイント（編集不要）。
+- `Makefile` : 受講者用ビルド定義。ターゲット `floor_runner` のルールが未完成（`/* TODO */` を補完すること）。
+
+### 実装要求（`calc.c` / `calc.h`）
+
+1. **`int calc_storage_percent(long used, long total)`**
+   - 使用量 `used` と 総容量 `total` から使用率（パーセンテージ: 0〜100）を計算して `int` 型で返す。
+   - `total <= 0` の場合は異常値として `-1` を返す。
+   - 小数点は切り捨て（整数除算 `(used * 100) / total`）。
+
+2. **`int calc_player_rank(int score)`**
+   - プレイヤーのスコアに応じたランク（整数値）を返す。
+   - `score >= 1000` ➔ ランク `3` (Sランク)
+   - `score >= 500`  ➔ ランク `2` (Aランク)
+   - `score >= 100`  ➔ ランク `1` (Bランク)
+   - `score < 100`   ➔ ランク `0` (Cランク)
+
+### 要求される出力フォーマット（`main.c` 実行時）
+`main.c` が `calc.h` を読み込んで正しくビルド・実行された場合、以下のフォーマットが出力される。
+
+```text
+==================================================
+  [AINCRAD SYSTEM] : DRAFTING ROOM MODULE
+==================================================
+STORAGE USAGE : 42%
+PLAYER SCORE  : 750 (RANK: 2)
+==================================================
+```
+
+### クリア手順（ターミナルで実行）
+1. 手動で `make` を実行してコンパイルとテストを行う場合：
+   ```bash
+   make
+   ./floor_runner
+   ```
+2. ボス戦（自動採点スクリプト）に挑む場合：
+   ```bash
+   ./test.sh
+   ```
+   緑色の文字で `【判定】 CLEARED!` と表示されれば第4層突破だ！
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/Makefile
+================================================================================
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wextra -Werror
+
+all: floor_runner
+
+# TODO: Define build rules for floor_runner, main.o, and calc.o
+
+clean:
+	rm -f *.o floor_runner
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/calc.c
+================================================================================
+#include "calc.h"
+
+int calc_storage_percent(long used, long total) {
+    /* TODO: Return percentage (0-100) calculated as (used * 100) / total.
+       If total <= 0, return -1. */
+    (void)used;
+    (void)total;
+    return -1;
+}
+
+int calc_player_rank(int score) {
+    /* TODO: Return rank based on score:
+       >= 1000 -> 3
+       >= 500  -> 2
+       >= 100  -> 1
+       < 100   -> 0
+    */
+    (void)score;
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/calc.h
+================================================================================
+/* TODO: Add include guard (#ifndef CALC_H ...) */
+
+/* TODO: Add prototype declarations for:
+   - int calc_storage_percent(long used, long total);
+   - int calc_player_rank(int score);
+*/
+
+/* TODO: End of include guard (#endif) */
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/main.c
+================================================================================
+#include <stdio.h>
+#include "calc.h"
+
+int main(void) {
+    long used = 425;
+    long total = 1000;
+    int score = 750;
+
+    int storage_pct = calc_storage_percent(used, total);
+    int rank = calc_player_rank(score);
+
+    printf("==================================================\n");
+    printf("  [AINCRAD SYSTEM] : DRAFTING ROOM MODULE\n");
+    printf("==================================================\n");
+    printf("STORAGE USAGE : %d%%\n", storage_pct);
+    printf("PLAYER SCORE  : %d (RANK: %d)\n", score, rank);
+    printf("==================================================\n");
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_04_DraftingRoom/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "04" "迷宮区の製図室 (The Drafting Room)"
+
+TARGET_HEADER="calc.h"
+TARGET_DIR="."
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    TARGET_HEADER=".solution/calc.h"
+    TARGET_DIR=".solution"
+fi
+
+# 1. ヘッダファイルのインクルードガード検査 (#ifndef ディレクティブが存在するか)
+if ! grep -E '^[[:space:]]*#ifndef' "$TARGET_HEADER" > /dev/null 2>&1; then
+    sao_fail "calc.h に #ifndef インクルードガードが記述されていない。"
+fi
+sao_pass "Test 1: ヘッダファイル (calc.h) のインクルードガード記述を確認"
+
+# 2. make ビルド検証
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    # Solution モード時は .solution 内の Makefile / calc.h / calc.c と main.c を一時的にコピーしてビルド
+    cp main.c .solution/
+    make -C .solution clean > /dev/null 2>&1
+    make -C .solution > compile_err.log 2>&1
+    BUILD_RET=$?
+    rm -f .solution/main.c
+else
+    make clean > /dev/null 2>&1
+    make > compile_err.log 2>&1
+    BUILD_RET=$?
+fi
+
+if [ $BUILD_RET -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "make コマンドでのビルドに失敗した。Makefile やソースコードを見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 2: make コマンドによるビルド成功"
+
+RUNNER="${TARGET_DIR}/floor_runner"
+if [ ! -f "$RUNNER" ]; then
+    sao_fail "ビルド成果物 'floor_runner' が生成されていない。"
+fi
+
+# 3. 実行および出力結果フォーマット検証
+OUTPUT=$("$RUNNER")
+RET_CODE=$?
+
+# クリーンアップ
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    make -C .solution clean > /dev/null 2>&1
+else
+    make clean > /dev/null 2>&1
+fi
+
+if [ $RET_CODE -ne 0 ]; then
+    sao_fail "floor_runner の終了コードが 0 ではない (現在の返り値: ${RET_CODE})。"
+fi
+sao_pass "Test 3: 正常終了ステータス (return 0) を確認"
+
+EXPECTED="==================================================
+  [AINCRAD SYSTEM] : DRAFTING ROOM MODULE
+==================================================
+STORAGE USAGE : 42%
+PLAYER SCORE  : 750 (RANK: 2)
+=================================================="
+
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    sao_fail "出力結果が期待値と一致しない。"
+fi
+sao_pass "Test 4: 計算結果および出力フォーマット完全一致"
+
+sao_complete "Floor_04_DraftingRoom"
+
+
+================================================================================
+FILE: Floor_05_Abyss/.solution/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+
+void level_up(int *level) {
+    if (level != NULL) {
+        (*level)++;
+    }
+}
+
+int safe_read_hp(const int *hp_ptr) {
+    if (hp_ptr == NULL) {
+        return -1;
+    }
+    return *hp_ptr;
+}
+
+void init_array(int *arr, int size) {
+    if (arr == NULL || size < 0) {
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        arr[i] = (i + 1) * 10;
+    }
+}
+
+int main(void) {
+    printf("==================================================\n");
+    printf("  [AINCRAD SYSTEM] : FLOOR 05 EXAM - ABYSS\n");
+    printf("==================================================\n");
+
+    // TEST 1: level_up
+    int current_level = 1;
+    printf("[TEST 1] Pass-by-Pointer Check\n");
+    printf("  Before: Level %d\n", current_level);
+    level_up(&current_level);
+    if (current_level == 2) {
+        printf("  After : Level %d (SUCCESS)\n", current_level);
+    } else {
+        printf("  After : Level %d (FAILED: Level did not increase!)\n", current_level);
+    }
+    printf("\n");
+
+    // TEST 2: safe_read_hp
+    int player_hp = 250;
+    printf("[TEST 2] NULL Pointer Guard Check\n");
+    int hp_valid = safe_read_hp(&player_hp);
+    printf("  Valid HP Read: %d\n", hp_valid);
+
+    int hp_null = safe_read_hp(NULL);
+    if (hp_null == -1) {
+        printf("  NULL HP Read : %d (SUCCESS)\n", hp_null);
+    } else {
+        printf("  NULL HP Read : %d (FAILED)\n", hp_null);
+    }
+    printf("\n");
+
+    // TEST 3: init_array
+    printf("[TEST 3] Array Boundary Check\n");
+    int buffer[5];
+    init_array(buffer, 5);
+    printf("  Array Elements: %d %d %d %d %d\n",
+           buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    printf("  Boundary Check: PASSED (SUCCESS)\n");
+
+    printf("==================================================\n");
+    printf("ALL TESTS PASSED! YOU SURVIVED THE ABYSS.\n");
+    printf("==================================================\n");
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_05_Abyss/MISSION.md
+================================================================================
+# 【第5層：最深の深淵（中間試験）】〜禁断のポインタと番地〜
+
+> **茅場晶彦からのシステム通達**:
+> 「プレイヤー諸君、ようこそ第5層『最深の深淵』へ。
+> ここは諸君にとって最初の大いなる壁、すなわち『中間試験』の舞台だ。
+> 諸君がこれまで扱ってきた変数は、メモリという広大な世界に刻まれた単なる『影』に過ぎない。
+> 影をいくら操作しようと、実体を変えることはできないのだ。
+>
+> 実体そのものを支配するために必要なもの——それが『ポインタ（Pointer）』であり『メモリ番地（Address）』である。
+> ポインタの力を誤って振るえば、システムは即座に崩壊し、セグメンテーション違反（SIGSEGV）という死の深淵へと呑み込まれる。
+> だが恐れるな。メモリのマップを解読し、AddressSanitizerという真実の眼（デバッガ）を携えよ。
+> 3つの呪われたバグを解明し、この中間試験を破断してみせよ」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① メモリ空間とアドレス演算子 `&`・間接参照演算子 `*`
+コンピュータのメモリ（RAM）は、1バイトごとに固有の「番地（アドレス）」が割り当てられた巨大なロッカーのようなものです。
+
+```text
++-------------------+-------------------+-------------------+
+| メモリ番地        | 変数名            | 値                |
++-------------------+-------------------+-------------------+
+| 0x7ffd5f81a02c    | level             | 10                |
+| 0x7ffd5f81a030    | ptr               | 0x7ffd5f81a02c    |
++-------------------+-------------------+-------------------+
+```
+
+- **アドレス演算子 `&`**: 変数が配置されているメモリの番地を取得します。
+  `&level` は 「`level` 変数が置かれているメモリ番地」を表します。
+- **ポインタ変数**: メモリ番地（アドレス）を記憶するための専用変数です。
+  `int *ptr = &level;` は 「`int` 型の番地を格納する変数 `ptr` に `level` の番地を代入する」という意味になります。
+- **間接参照演算子（デファレンス） `*`**: ポインタが指し示している番地の「中身」を読み書きします。
+  `*ptr = 20;` と書くと、`ptr` が指す番地（`level` の領域）の値が `20` に書き換わります。
+
+```c
+int level = 10;
+int *ptr = &level; // ptr に level のアドレスを格納
+
+printf("levelの値: %d\n", level);     // 10
+printf("levelの番地: %p\n", (void*)&level); // 0x7ffd5f81a02c
+printf("ptrの保持する値: %p\n", (void*)ptr); // 0x7ffd5f81a02c
+printf("*ptrの指す値: %d\n", *ptr);   // 10
+
+*ptr = 20; // ptrを経由してlevelを直接書き換える！
+printf("変更後のlevel: %d\n", level); // 20
+```
+
+---
+
+### ② 値渡し（Pass by Value）vs ポインタ渡し（Pass by Pointer）
+C言語の関数引数は、デフォルトではすべて**値渡し（コピー）**です。
+
+#### 【危険】値渡しの罠
+```c
+void level_up_bad(int level) {
+    level++; // 引数としてコピーされたローカル変数 level を増やしているだけ！
+}
+
+int main(void) {
+    int my_level = 10;
+    level_up_bad(my_level);
+    // my_level は 10 のまま！呼び出し元の値は変化しない！
+    return 0;
+}
+```
+
+```text
+[main のスタック領域]          [level_up_bad のスタック領域]
++--------------------+        +--------------------+
+| my_level: 10       | --コピー->| level: 10         |
++--------------------+        +--------------------+
+  (変化なし!)                    (11 に増やすが関数終了で消滅)
+```
+
+#### 【解決】ポインタ渡し
+呼び出し元の変数の「番地」を関数に渡すことで、関数の中から呼び出し元の実体を直接書き換えることができます。
+
+```c
+void level_up_good(int *level_ptr) {
+    if (level_ptr != NULL) {
+        (*level_ptr)++; // 指し示している先の実体を直接インクリメント
+    }
+}
+
+int main(void) {
+    int my_level = 10;
+    level_up_good(&my_level); // アドレスを渡す
+    // my_level は 11 に更新される！
+    return 0;
+}
+```
+
+```text
+[main のスタック領域]          [level_up_good のスタック領域]
++--------------------+        +--------------------+
+| my_level: 10 <=====|========| level_ptr: 0x...02c| (my_levelの番地を保持)
++--------------------+        +--------------------+
+  (*level_ptr)++ により 11 に直接書き換わる！
+```
+
+---
+
+### ③ NULLポインタとセグメンテーション違反（SIGSEGV）
+ポインタがどこも指していない状態を表す特別な値が `NULL`（通常はアドレス `0`）です。
+
+存在しない無効なアドレス（`NULL` や解放済み領域、許可されていない領域）にアクセス（間接参照 `*`）しようとすると、OSのメモリ保護機能によりプログラムは即座に強制終了します。これが**セグメンテーション違反（Segmentation Fault / SIGSEGV）**です。
+
+```c
+int *ptr = NULL;
+*ptr = 100; // 💥 CRASH! セグメンテーション違反が発生！
+```
+
+#### 防御的プログラミング：NULLチェックの徹底
+ポインタを引数として受ける関数では、間接参照する前に必ず `NULL` チェックを行うのが鉄則です。
+
+```c
+int safe_read_hp(const int *hp_ptr) {
+    // ポインタが NULL でないか必ず確認する
+    if (hp_ptr == NULL) {
+        return -1; // エラー状態を示す値を返す
+    }
+    return *hp_ptr;
+}
+```
+
+---
+
+### ④ メモリ境界外アクセス（Off-by-One error / バッファオーバーフロー）
+配列の要素数が `N` の場合、有効なインデックスは `0` から `N - 1` までです。
+ループ条件を `i <= N` と誤ってしまうと、配列の外側のメモリ（`N` 番目の領域）にアクセスしてしまいます。
+
+```text
+配列 arr[5] のメモリ配置 (size = 5)
++----------+----------+----------+----------+----------+------------------+
+| arr[0]   | arr[1]   | arr[2]   | arr[3]   | arr[4]   | 🚨 arr[5] (侵犯!) |
++----------+----------+----------+----------+----------+------------------+
+  有効インデックス: 0, 1, 2, 3, 4                         境界外アクセス！
+```
+
+---
+
+### ⑤ AddressSanitizer（ASan）によるデバッグとログの読み方
+コンパイル時に `-fsanitize=address -g` フラグを付与すると、LLVM/GCC の AddressSanitizer (ASan) が有効化され、メモリ違反が発生した瞬間に詳細なエラーログを出力してくれます。
+
+#### ASan ログの解読ガイド
+
+```text
+=================================================================
+==12345==ERROR: AddressSanitizer: global-buffer-overflow on address 0x...
+READ of size 4 at 0x... thread T0
+    #0 0x... in init_array /path/to/main.c:25
+    #1 0x... in main /path/to/main.c:45
+
+0x... is located 0 bytes to the right of global variable 'arr' defined in 'main.c:10'
+SUMMARY: AddressSanitizer: global-buffer-overflow /path/to/main.c:25 in init_array
+=================================================================
+```
+
+1. **エラー種別 (`ERROR: AddressSanitizer: ...`)**:
+   - `global-buffer-overflow` / `stack-buffer-overflow`: 配列等の境界外アクセス。
+   - `SEGV on unknown address`: NULLポインタや不正アドレス参照。
+2. **発生箇所 (`#0 0x... in function /path/to/file.c:line`)**:
+   エラーが発生した関数名と行番号（上記なら `main.c` の 25 行目）。
+3. **詳細説明 (`is located ... bytes to the right of...`)**:
+   変数の境界から何バイトオーバーしたかを表示。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **ポインタ（Pointer）**:
+  メモリ上のアドレス（番地）を保持する変数。C言語において最も強力であり、最もバグを生み出しやすい要素。
+- **デファレンス（Dereference / 間接参照）**:
+  ポインタ変数に `*` を付けて、そのポインタが指し示しているアドレスに格納されているデータにアクセスすること。
+- **SIGSEGV（Segmentation Fault / セグフォ）**:
+  アクセス権限のないメモリ領域を読み書きしようとした時に、OSから送られるシグナル（シグナル番号11）。
+- **Off-by-One エラー**:
+  ループの境界条件を「1」間違えることで発生するバグ（`<` を `<=` と書く、`0` 開始か `1` 開始かを勘違いするなど）。
+- **AddressSanitizer（ASan）**:
+  Googleが開発した高速メモリバグ検出ツール。コンパイルオプション `-fsanitize=address` を付けるだけで利用可能。
+
+---
+
+## 3. ボス戦ミッション（中間試験仕様）
+
+この階層の `main.c` には、呪われた3つのバグが仕込まれている。
+これらのバグをすべて解読・修正し、システムチェックを通過させよ。
+
+### 修正対象の3つの関数
+
+1. **`void level_up(int level)`**:
+   - **バグ**: 値渡しになっているため、呼び出し元（`main` 関数内）のレベル変数が上がらない。
+   - **修正仕様**: 引数をポインタ渡し `int *level` に変更し、ポインタ経由で加算すること。
+2. **`int safe_read_hp(const int *hp_ptr)`**:
+   - **バグ**: `NULL` が渡された時にチェックせず `*hp_ptr` を参照するため、セグメンテーション違反でクラッシュする。
+   - **修正仕様**: `hp_ptr == NULL` の場合は `*hp_ptr` を参照せず、安全に `-1` を返す処理（`NULL` ガード）を追加すること。
+3. **`void init_array(int *arr, int size)`**:
+   - **バグ**: ループ条件が `i <= size` になっており、Off-by-One によるバッファオーバーフローが発生して ASan に検知される。
+   - **修正仕様**: ループ条件を `i < size` に修正すること。
+
+---
+
+### 期待される出力フォーマット（修正完了時）
+
+```text
+==================================================
+  [AINCRAD SYSTEM] : FLOOR 05 EXAM - ABYSS
+==================================================
+[TEST 1] Pass-by-Pointer Check
+  Before: Level 1
+  After : Level 2 (SUCCESS)
+
+[TEST 2] NULL Pointer Guard Check
+  Valid HP Read: 250
+  NULL HP Read : -1 (SUCCESS)
+
+[TEST 3] Array Boundary Check
+  Array Elements: 10 20 30 40 50
+  Boundary Check: PASSED (SUCCESS)
+==================================================
+ALL TESTS PASSED! YOU SURVIVED THE ABYSS.
+==================================================
+```
+
+---
+
+### クリア手順（ターミナルで実行）
+1. 手動でコンパイル＆実行して ASan の出力を確認する場合：
+   ```bash
+   gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address -g -o floor_runner main.c
+   ./floor_runner
+   ```
+2. ボス戦（自動採点スクリプト）に挑む場合：
+   ```bash
+   ./test.sh
+   ```
+   緑色の文字で `【判定】 CLEARED!` と表示されれば第5層中間試験クリアだ！
+
+
+================================================================================
+FILE: Floor_05_Abyss/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+
+/*
+ * =================================================================
+ * [BUG 1] 値渡し（Pass by Value）のバグ
+ * 仕様: 呼び出し元のレベル変数を +1 インクリメントしたい。
+ * 現状: 値渡しになっているため、呼び出し元のレベルが更新されない。
+ * TODO: 引数をポインタ渡し (int *level) に修正し、関数の呼び出し方も修正せよ。
+ * =================================================================
+ */
+void level_up(int level) {
+    /* TODO: ポインタ渡しに変更し、指す先を +1 する */
+    level++;
+}
+
+/*
+ * =================================================================
+ * [BUG 2] NULL ポインタ参照（SIGSEGV）のバグ
+ * 仕様: hp_ptr が NULL の場合は安全に -1 を返し、NULL でない場合は値を返す。
+ * 現状: NULL チェックを行わずに *hp_ptr を直接参照してクラッシュする。
+ * TODO: hp_ptr が NULL か判定する if文を追加せよ。
+ * =================================================================
+ */
+int safe_read_hp(const int *hp_ptr) {
+    /* TODO: NULL チェックを追加せよ */
+    return *hp_ptr;
+}
+
+/*
+ * =================================================================
+ * [BUG 3] Off-by-One バッファオーバーフロー（ASan検知）のバグ
+ * 仕様: 大きさ size の配列 arr の各要素に (i + 1) * 10 を代入する。
+ * 現状: ループ条件が i <= size になっており、配列外にアクセスする。
+ * TODO: ループの継続条件を正しく修正せよ。
+ * =================================================================
+ */
+void init_array(int *arr, int size) {
+    /* TODO: i <= size のバグを修正せよ */
+    for (int i = 0; i <= size; i++) {
+        arr[i] = (i + 1) * 10;
+    }
+}
+
+int main(void) {
+    printf("==================================================\n");
+    printf("  [AINCRAD SYSTEM] : FLOOR 05 EXAM - ABYSS\n");
+    printf("==================================================\n");
+
+    // TEST 1: level_up
+    int current_level = 1;
+    printf("[TEST 1] Pass-by-Pointer Check\n");
+    printf("  Before: Level %d\n", current_level);
+    /* TODO: 関数の型変更に合わせて引数を渡すように修正すること */
+    level_up(current_level);
+    if (current_level == 2) {
+        printf("  After : Level %d (SUCCESS)\n", current_level);
+    } else {
+        printf("  After : Level %d (FAILED: Level did not increase!)\n", current_level);
+    }
+    printf("\n");
+
+    // TEST 2: safe_read_hp
+    int player_hp = 250;
+    printf("[TEST 2] NULL Pointer Guard Check\n");
+    int hp_valid = safe_read_hp(&player_hp);
+    printf("  Valid HP Read: %d\n", hp_valid);
+
+    int hp_null = safe_read_hp(NULL);
+    if (hp_null == -1) {
+        printf("  NULL HP Read : %d (SUCCESS)\n", hp_null);
+    } else {
+        printf("  NULL HP Read : %d (FAILED)\n", hp_null);
+    }
+    printf("\n");
+
+    // TEST 3: init_array
+    printf("[TEST 3] Array Boundary Check\n");
+    int buffer[5];
+    init_array(buffer, 5);
+    printf("  Array Elements: %d %d %d %d %d\n",
+           buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    printf("  Boundary Check: PASSED (SUCCESS)\n");
+
+    printf("==================================================\n");
+    printf("ALL TESTS PASSED! YOU SURVIVED THE ABYSS.\n");
+    printf("==================================================\n");
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_05_Abyss/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "05" "最深の深淵（中間試験） (The Deepest Abyss)"
+
+SRC_FILE="main.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/main.c"
+fi
+
+# 1. コンパイルチェック（ASan 有効化）
+gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address -g -o floor_runner "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや型不一致を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル & ASan (-Wall -Wextra -Werror -fsanitize=address) 成功"
+
+# 2. 実行 & 出力チェック
+OUTPUT=$(./floor_runner 2>&1)
+RET_CODE=$?
+
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "プログラムが異常終了した (クラッシュ/セグフォ/ASan違反)。クラッシュログを確認せよ:\n$OUTPUT"
+fi
+sao_pass "Test 2: クラッシュなしで正常終了ステータス (return 0) を確認"
+
+# 3. 期待される出力の検証
+EXPECTED="==================================================
+  [AINCRAD SYSTEM] : FLOOR 05 EXAM - ABYSS
+==================================================
+[TEST 1] Pass-by-Pointer Check
+  Before: Level 1
+  After : Level 2 (SUCCESS)
+
+[TEST 2] NULL Pointer Guard Check
+  Valid HP Read: 250
+  NULL HP Read : -1 (SUCCESS)
+
+[TEST 3] Array Boundary Check
+  Array Elements: 10 20 30 40 50
+  Boundary Check: PASSED (SUCCESS)
+==================================================
+ALL TESTS PASSED! YOU SURVIVED THE ABYSS.
+=================================================="
+
+if [ "$OUTPUT" != "$EXPECTED" ]; then
+    echo "--- 期待される出力 ---"
+    echo "$EXPECTED"
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "出力内容が不一致、またはバグが未修正である。"
+fi
+sao_pass "Test 3: 全テスト項目パス & 出力フォーマット完全一致"
+
+rm -f floor_runner
+sao_complete "Floor_05_Abyss"
+
+
+================================================================================
+FILE: Floor_06_SoulBlueprint/.solution/arg_parser.c
+================================================================================
+#include "config.h"
+#include <string.h>
+#include <stdio.h>
+
+int parse_args(int argc, char *argv[], GearConfig *out_config) {
+    if (out_config == NULL || argc < 2) {
+        return -1;
+    }
+
+    memset(out_config, 0, sizeof(GearConfig));
+    snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", "./dungeon_box");
+
+    const char *subcmd = argv[1];
+
+    if (strcmp(subcmd, "-h") == 0 || strcmp(subcmd, "--help") == 0) {
+        out_config->command = CMD_HELP;
+        return 0;
+    }
+
+    if (strcmp(subcmd, "-v") == 0 || strcmp(subcmd, "--version") == 0) {
+        out_config->command = CMD_VERSION;
+        return 0;
+    }
+
+    if (strcmp(subcmd, "stat") == 0) {
+        out_config->command = CMD_STAT;
+        return 0;
+    }
+
+    if (strcmp(subcmd, "memo") == 0) {
+        out_config->command = CMD_MEMO;
+        if (argc < 3 || argv[2][0] == '\0') {
+            return -1;
+        }
+        snprintf(out_config->memo_text, sizeof(out_config->memo_text), "%s", argv[2]);
+        return 0;
+    }
+
+    if (strcmp(subcmd, "clean") == 0) {
+        out_config->command = CMD_CLEAN;
+        for (int i = 2; i < argc; i++) {
+            if (strcmp(argv[i], "--dry-run") == 0) {
+                out_config->dry_run = true;
+            } else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+                out_config->verbose = true;
+            } else {
+                snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", argv[i]);
+            }
+        }
+        return 0;
+    }
+
+    return -1;
+}
+
+
+================================================================================
+FILE: Floor_06_SoulBlueprint/MISSION.md
+================================================================================
+# 【第6層：魂の設計図】〜構造体とデータモデリング〜
+
+> **茅場晶彦からのシステム通達**:
+> 「プレイヤー諸君、アインクラッド第6層へようこそ。
+> これまで君たちは、単一の数値や文字列、配列といったバラバラのデータを扱ってきた。
+> しかし、複雑なシステムを構築するには、バラバラのデータに“魂の器”を与え、意味ある一つのデータ構造として統合せねばならない。
+> 構造体（`struct`）とは、プログラムにおける『魂の設計図』だ。
+> 複数の属性を一つにまとめ、カプセル化し、整然としたモデルとして扱う技術を身につけよ。
+> さもなくば、肥大化するコードの混沌に飲み込まれ、消滅することになるだろう」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+これまでの階層では `int` や `char[]` といった単一の型を扱ってきましたが、現実のアプリケーション開発では「プレイヤーの名前・LV・HP・MP」や「コマンドライン引数の解析結果（コマンド種別・ターゲットパス・フラグ群）」のように、複数の異なる型のデータを1つのまとまりとして管理する必要があります。
+
+これを実現するのが **構造体（`struct`）** と **列挙型（`enum`）** です。
+
+---
+
+### ① 構造体（`struct`）とメンバーアクセス
+
+構造体は、異なるデータ型の変数を1つのグループにまとめるカスタムデータ型を作成する仕組みです。
+
+```c
+/* 構造体の定義 */
+struct Player {
+    char name[32];
+    int level;
+    int hp;
+    double exp;
+};
+
+/* 構造体変数の宣言と初期化 */
+struct Player p1 = {"Kirito", 10, 250, 1250.5};
+
+/* メンバーへのアクセス（ドット演算子 .） */
+printf("Player: %s (LV: %d)\n", p1.name, p1.level);
+```
+
+#### メモリ配置と構造体の本質
+構造体の各メンバーはメモリ上に連続して配置されます。これにより、複数の関連データを関数の引数として渡す際も、構造体1つ（またはそのポインタ）を渡すだけで済むようになります。
+
+---
+
+### ② 型にエイリアスをつける `typedef`
+
+C言語では構造体を使う際、毎回 `struct Player` と書く必要がありますが、`typedef` を使うことで簡潔な型名を定義できます。
+
+```c
+/* typedef を用いた構造体定義 */
+typedef struct {
+    char name[32];
+    int level;
+    int hp;
+} Player;
+
+/* struct キーワードなしで型として利用可能 */
+Player p1;
+p1.level = 15;
+```
+
+---
+
+### ③ 列挙型（`enum`）による状態の表現
+
+プログラム内で「コマンドの種類」や「プレイヤーの状態」を表現する際、魔法の数字（マジックナンバー: `0`, `1`, `2` ...）を直接使うとコードの読解性が著しく低下します。
+`enum` を使うことで、一連の定数に名前を与えることができます。
+
+```c
+typedef enum {
+    CMD_NONE = 0,
+    CMD_HELP,     /* 1 */
+    CMD_VERSION,  /* 2 */
+    CMD_STAT,     /* 3 */
+    CMD_MEMO,     /* 4 */
+    CMD_CLEAN     /* 5 */
+} GearCommand;
+
+GearCommand cmd = CMD_STAT;
+if (cmd == CMD_STAT) {
+    /* ステータス画面の処理 */
+}
+```
+
+---
+
+### ④ 構造体ポインタとアロー演算子（`->`）
+
+構造体を関数に引数として渡す際、値渡し（コピー）を行うとメモリ転送のオーバーヘッドが発生し、関数内での変更が呼び出し元に反映されません。
+そのため、実務では **構造体のポインタ（アドレス渡し）** を使用します。
+
+構造体ポインタ経由でメンバーにアクセスする場合は、ドット演算子 `.` ではなく **アロー演算子 `->`** を使用します。
+
+```c
+void reset_player(Player *p) {
+    if (p == NULL) return;
+
+    /* (*p).hp = 100; と同等だが、アロー演算子を用いるのが標準的 */
+    p->hp = 100;
+    p->level = 1;
+}
+```
+
+#### アロー演算子 `->` の構文対比
+
+| アクセス方法 | 記述形式 | 意味 |
+| :--- | :--- | :--- |
+| 直接アクセス | `config.dry_run = true;` | 実体（変数）のメンバーを変更 |
+| 間接アクセス（展開） | `(*out_config).dry_run = true;` | ポインタを間接参照してからメンバー変更 |
+| **アロー演算子** | `out_config->dry_run = true;` | ポインタ経由で直感的にメンバー変更（標準） |
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **データモデリング（Data Modeling）**:
+  現実世界の課題やシステム仕様を分析し、最適なデータ構造（構造体やフィールド定義）に落とし込む設計手法のこと。適切なデータモデルを定義できれば、処理ロジック（コード）は自然とシンプルかつ堅牢になる。
+- **Config構造体（Configuration Structure）**:
+  アプリケーション起動時の設定値やコマンドライン引数の解析結果を1つにまとめた構造体。プログラム全体に設定情報を安全かつ分かりやすく伝搬するために用いられる。
+- **ドライラン（Dry-run）**:
+  ファイルの削除や変更などを伴う本番処理を実行する前に、実際の変更を行わずに「どのような操作が行われるか」を事前確認・シミュレーションする実行モードのこと（例: `--dry-run` オプション）。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+本フロアでは、CLIツール `gear` の核となるコマンドライン引数解析エンジン `parse_args` を実装する。
+
+### 対象ファイルとデータ構造
+ヘッダファイル `gear/include/config.h` に定義されている `GearConfig` 構造体および `GearCommand` 列挙型を使用する。
+
+```c
+/* gear/include/config.h */
+#define MAX_PATH_LEN 1024
+#define MAX_MEMO_LEN 512
+
+typedef enum {
+    CMD_NONE = 0,
+    CMD_HELP,
+    CMD_VERSION,
+    CMD_STAT,
+    CMD_MEMO,
+    CMD_CLEAN
+} GearCommand;
+
+typedef struct {
+    GearCommand command;
+    char target_path[MAX_PATH_LEN];
+    char memo_text[MAX_MEMO_LEN];
+    bool dry_run;
+    bool verbose;
+} GearConfig;
+
+int parse_args(int argc, char *argv[], GearConfig *out_config);
+```
+
+---
+
+### `parse_args` 関数詳細仕様
+
+`parse_args(int argc, char *argv[], GearConfig *out_config)` 関数を `arg_parser.c` に実装せよ。
+
+#### 1. 共通事前条件とデフォルト初期化
+1. `out_config == NULL` または `argc < 2` の場合は、処理を行わず即座に `-1` を返せ。
+2. `out_config` が指す構造体全体をゼロクリア（`memset(out_config, 0, sizeof(GearConfig))` や全メンバ初期化）せよ。
+3. デフォルトの `target_path` として `"./dungeon_box"` を設定せよ（文字列コピーを行うこと）。
+
+#### 2. サブコマンドの解析 (`argv[1]`)
+`argv[1]` の文字列に応じて以下の挙動を行え：
+
+- **`-h` または `--help` の場合**:
+  - `out_config->command` に `CMD_HELP` を設定し、`0` を返せ。
+- **`-v` または `--version` の場合**:
+  - `out_config->command` に `CMD_VERSION` を設定し、`0` を返せ。
+- **`stat` の場合**:
+  - `out_config->command` に `CMD_STAT` を設定し、`0` を返せ。
+- **`memo` の場合**:
+  - `out_config->command` に `CMD_MEMO` を設定せよ。
+  - 次の引数 `argv[2]` が存在し（`argc >= 3`）、かつ空文字列（`""`）でない場合、その内容を `out_config->memo_text` に格納（コピー）して `0` を返せ。
+  - もし `argv[2]` が存在しない、または空文字列（`argv[2][0] == '\0'`）の場合は `-1` を返せ。
+- **`clean` の場合**:
+  - `out_config->command` に `CMD_CLEAN` を設定せよ。
+  - 以降の引数 `argv[2]` から `argv[argc - 1]` を順次解析せよ（後述の `clean` オプション解析ルール参照）。解析完了後、`0` を返せ。
+- **上記以外の未知のサブコマンドの場合**:
+  - `-1` を返せ。
+
+#### 3. `clean` コマンドのオプション解析ルール
+`argv[1]` が `"clean"` の場合、`i = 2` から `argc - 1` までの各引数 `argv[i]` について以下のように処理せよ：
+
+- **`"--dry-run"` の場合**: `out_config->dry_run = true;`
+- **`"--verbose"` または `"-v"` の場合**: `out_config->verbose = true;`
+- **それ以外の文字列（ハイフンで始まらないパス指定等）の場合**:
+  - `out_config->target_path` をその文字列で上書き更新せよ。
+
+---
+
+### クリア手順（ターミナルで実行）
+
+1. 未完成スケルトンでのテスト確認（失敗することを確認）:
+   ```bash
+   ./test.sh
+   ```
+2. 模範解答（.solution）でのテスト確認（成功することを確認）:
+   ```bash
+   ./test.sh --solution
+   ```
+
+全テストを通過（`CLEARED!`）し、第6層の魂の設計図を完成させよ！
+
+
+================================================================================
+FILE: Floor_06_SoulBlueprint/arg_parser.c
+================================================================================
+#include "config.h"
+#include <string.h>
+#include <stdio.h>
+
+int parse_args(int argc, char *argv[], GearConfig *out_config) {
+    /* TODO: 1. 引数チェック (out_config == NULL || argc < 2 なら -1 を返す) */
+    (void)argc;
+    (void)argv;
+    (void)out_config;
+
+    /* TODO: 2. out_config をゼロ初期化し、target_path のデフォルト値として "./dungeon_box" をセット */
+
+    /* TODO: 3. サブコマンド (argv[1]) に応じて設定を行う
+     * - "-h" / "--help": CMD_HELP をセットし 0 を返す
+     * - "-v" / "--version": CMD_VERSION をセットし 0 を返す
+     * - "stat": CMD_STAT をセットし 0 を返す
+     * - "memo": CMD_MEMO をセット。引数 argv[2] が存在し空文字でなければ memo_text に格納し 0 を返す。存在しないか空文字なら -1 を返す
+     * - "clean": CMD_CLEAN をセット。argv[2] 以降のオプション引数を解析:
+     *     "--dry-run": dry_run = true
+     *     "--verbose" または "-v": verbose = true
+     *     それ以外: target_path を上書き更新
+     *     解析完了後 0 を返す
+     * - 未知のサブコマンド: -1 を返す
+     */
+
+    return -1;
+}
+
+
+================================================================================
+FILE: Floor_06_SoulBlueprint/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "config.h"
+
+static int run_tests(void) {
+    GearConfig config;
+    int res;
+
+    /* Pattern 1: Invalid Arguments (argc < 2 or NULL out_config) */
+    char *argv1[] = {"gear"};
+    res = parse_args(1, argv1, &config);
+    if (res != -1) {
+        printf("[FAIL] Pattern 1: Expected -1 for argc < 2, got %d\n", res);
+        return 1;
+    }
+    res = parse_args(2, argv1, NULL);
+    if (res != -1) {
+        printf("[FAIL] Pattern 1: Expected -1 for NULL out_config, got %d\n", res);
+        return 1;
+    }
+
+    /* Pattern 2: Help / Version (-h or --version) */
+    char *argv2[] = {"gear", "-h"};
+    res = parse_args(2, argv2, &config);
+    if (res != 0 || config.command != CMD_HELP || strcmp(config.target_path, "./dungeon_box") != 0) {
+        printf("[FAIL] Pattern 2: Failed to parse '-h'\n");
+        return 1;
+    }
+
+    char *argv2_v[] = {"gear", "--version"};
+    res = parse_args(2, argv2_v, &config);
+    if (res != 0 || config.command != CMD_VERSION) {
+        printf("[FAIL] Pattern 2: Failed to parse '--version'\n");
+        return 1;
+    }
+
+    /* Pattern 3: Stat command ("stat") */
+    char *argv3[] = {"gear", "stat"};
+    res = parse_args(2, argv3, &config);
+    if (res != 0 || config.command != CMD_STAT || strcmp(config.target_path, "./dungeon_box") != 0 ||
+        config.dry_run != false || config.verbose != false) {
+        printf("[FAIL] Pattern 3: Failed to parse 'stat'\n");
+        return 1;
+    }
+
+    /* Pattern 4: Memo command ("memo <text>") and error case */
+    char *argv4_err[] = {"gear", "memo"};
+    res = parse_args(2, argv4_err, &config);
+    if (res != -1) {
+        printf("[FAIL] Pattern 4: Expected -1 for memo without text, got %d\n", res);
+        return 1;
+    }
+
+    char *argv4[] = {"gear", "memo", "System Alert: Boss Spawned"};
+    res = parse_args(3, argv4, &config);
+    if (res != 0 || config.command != CMD_MEMO || strcmp(config.memo_text, "System Alert: Boss Spawned") != 0) {
+        printf("[FAIL] Pattern 4: Failed to parse 'memo'\n");
+        return 1;
+    }
+
+    /* Pattern 5: Clean command with options ("clean --dry-run -v /custom/dir") */
+    char *argv5[] = {"gear", "clean", "--dry-run", "-v", "/custom/dir"};
+    res = parse_args(5, argv5, &config);
+    if (res != 0 || config.command != CMD_CLEAN || strcmp(config.target_path, "/custom/dir") != 0 ||
+        config.dry_run != true || config.verbose != true) {
+        printf("[FAIL] Pattern 5: Failed to parse 'clean' with options\n");
+        return 1;
+    }
+
+    /* Pattern 6: Invalid / Unknown Subcommand */
+    char *argv6[] = {"gear", "unknown_cmd"};
+    res = parse_args(2, argv6, &config);
+    if (res != -1) {
+        printf("[FAIL] Pattern 6: Expected -1 for unknown subcommand, got %d\n", res);
+        return 1;
+    }
+
+    printf("ALL_PATTERNS_PASSED\n");
+    return 0;
+}
+
+int main(void) {
+    return run_tests();
+}
+
+
+================================================================================
+FILE: Floor_06_SoulBlueprint/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "06" "魂の設計図 (Soul Blueprint)"
+
+ARG_PARSER_SRC="arg_parser.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    ARG_PARSER_SRC=".solution/arg_parser.c"
+fi
+
+# 1. コンパイルチェック (ASan & 厳格ビルド)
+gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address -I../gear/include -o floor_runner main.c "$ARG_PARSER_SRC" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや型チェックを見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror -fsanitize=address -I../gear/include) 成功"
+
+# 2. 単体テスト実行チェック
+OUTPUT=$(./floor_runner 2>&1)
+RET_CODE=$?
+
+if [ $RET_CODE -ne 0 ]; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "引数解析テストが失敗した。parse_args の実装を見直したまえ。"
+fi
+
+if ! echo "$OUTPUT" | grep -q "ALL_PATTERNS_PASSED"; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "全テストパターンの検証を通過できなかった。"
+fi
+
+sao_pass "Test 2: 全 6 パターンのコマンドライン引数解析単体テストに合格"
+
+rm -f floor_runner
+sao_complete "Floor_06_SoulBlueprint"
+
+
+================================================================================
+FILE: Floor_07_Guillotine/.solution/file_list.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "file_list.h"
+
+int init_file_list(FileList *list, size_t initial_capacity) {
+    if (list == NULL || initial_capacity == 0) {
+        return -1;
+    }
+
+    list->items = (FileItem *)malloc(sizeof(FileItem) * initial_capacity);
+    if (list->items == NULL) {
+        return -1;
+    }
+
+    list->count = 0;
+    list->capacity = initial_capacity;
+    return 0;
+}
+
+int add_file_item(FileList *list, const char *filename, const char *ext, size_t size_bytes) {
+    if (list == NULL || list->items == NULL || filename == NULL || ext == NULL) {
+        return -1;
+    }
+
+    if (list->count >= list->capacity) {
+        size_t new_capacity = list->capacity * 2;
+        FileItem *new_items = (FileItem *)realloc(list->items, sizeof(FileItem) * new_capacity);
+        if (new_items == NULL) {
+            return -1;
+        }
+        list->items = new_items;
+        list->capacity = new_capacity;
+    }
+
+    FileItem *item = &list->items[list->count];
+
+    item->filename = (char *)malloc(strlen(filename) + 1);
+    if (item->filename == NULL) {
+        return -1;
+    }
+    strcpy(item->filename, filename);
+
+    strncpy(item->extension, ext, sizeof(item->extension) - 1);
+    item->extension[sizeof(item->extension) - 1] = '\0';
+
+    item->size_bytes = size_bytes;
+
+    list->count++;
+    return 0;
+}
+
+void free_file_list(FileList *list) {
+    if (list == NULL) {
+        return;
+    }
+
+    if (list->items != NULL) {
+        for (size_t i = 0; i < list->count; i++) {
+            if (list->items[i].filename != NULL) {
+                free(list->items[i].filename);
+                list->items[i].filename = NULL;
+            }
+        }
+        free(list->items);
+        list->items = NULL;
+    }
+
+    list->count = 0;
+    list->capacity = 0;
+}
+
+
+================================================================================
+FILE: Floor_07_Guillotine/MISSION.md
+================================================================================
+# 【第7層：記憶の断頭台】〜ヒープの支配者〜
+
+> **茅場晶彦からのシステム通達**:
+> 「プレイヤー諸君、アインクラッド第7層『記憶の断頭台』へようこそ。
+> これまでの戦いで君たちは、ローカル変数や関数の呼び出しとともに生成され、関数を抜ければ消え去る『スタック（Stack）の世界』を巡ってきた。
+> だが、冒険者の持ち物リストやダンジョンで拾う不確定なアイテム群のように、プログラム実行時にしかサイズが決まらない膨大なデータは、スタックの狭い領域には収まらない。
+> 自由な領域――『ヒープ（Heap）』を解禁せよ。
+> ただし忘れるな。ヒープ領域のメモリ確保と解放はすべて君自身の責任だ。
+> 1バイトでも解放を怠ればメモリは腐敗し、存在しない領域を参照すればプログラムは断頭台の露と消える。
+> メモリの生殺与奪権を握る『ヒープの支配者』となってみせよ」
+
+---
+
+## 1. この階層で学ぶC言語の核心
+
+### ① スタック領域（Stack）とヒープ領域（Heap）の決定的な違い
+
+C言語が扱うメモリ空間は、主に**スタック領域**と**ヒープ領域**の2つに大別されます。
+
+| 比較項目 | スタック領域 (Stack) | ヒープ領域 (Heap) |
+| :--- | :--- | :--- |
+| **管理主体** | コンパイラ / OS（自動管理） | プログラマ（手動管理） |
+| **サイズ決め** | コンパイル時にサイズが決定 | プログラム実行時に動的に決定 |
+| **メモリサイズ** | 小さい（数MB程度、上限あり） | 巨大（利用可能RAMの全域） |
+| **ライフサイクル** | スコープ（関数）を抜けると自動消滅 | `free()` を呼ぶまで永続 |
+| **リスク** | スタックオーバーフロー | メモリリーク、ダングリングポインタ |
+
+```
+【メモリ空間の構造】
++------------------------------------+ (高位アドレス)
+|  スタック領域 (Stack)              |
+|  - ローカル変数・関数引数           |
+|  - 自動で確保・解放される          |
+|                 |                  |
+|                 v (下に向かって成長) |
+|                                    |
+|                 ^ (上に向かって成長) |
+|                 |                  |
+|  ヒープ領域 (Heap)                 |
+|  - malloc / calloc / realloc       |
+|  - 手動で free 必須                |
++------------------------------------+
+|  データ領域 / テキスト（コード）領域|
++------------------------------------+ (低位アドレス)
+```
+
+---
+
+### ② 動的メモリ管理の4大関数 (`<stdlib.h>`)
+
+動的メモリ確保・操作には `<stdlib.h>` に定義されている標準関数を使用します。
+
+#### 1. `malloc` (Memory Allocation)
+指定されたバイト数のメモリをヒープ領域から確保します。確保された領域の中身は**初期化されず不定値**（ゴミデータ）が入っています。
+
+```c
+// 100バイトのメモリを確保
+char *ptr = (char *)malloc(100);
+if (ptr == NULL) {
+    // メモリ確保失敗時のエラーハンドリング
+    return -1;
+}
+```
+
+#### 2. `calloc` (Clear Allocation)
+要素数と1要素あたりのサイズを指定して確保します。`malloc` と異なり、確保された領域は**すべて `0` でクリア初期化**されます。
+
+```c
+// int型10個分の領域を確保し、0で初期化
+int *arr = (int *)calloc(10, sizeof(int));
+if (arr == NULL) {
+    return -1;
+}
+```
+
+#### 3. `realloc` (Re-Allocation)
+すでに確保されたヒープ領域のサイズを変更（拡大・縮小）します。
+元の場所の直後を拡張できない場合、別の広いアドレスへデータを全コピーした上で自動的に旧領域を解放し、新しいポインタを返します。
+
+```c
+// 既存の領域を2倍のサイズ（20個分）に拡張
+int *new_arr = (int *)realloc(arr, sizeof(int) * 20);
+if (new_arr == NULL) {
+    // 失敗しても元の arr は解放されていないため手動で free(arr) が必要
+    free(arr);
+    return -1;
+}
+arr = new_arr;
+```
+
+#### 4. `free` (Deallocation)
+`malloc` / `calloc` / `realloc` で確保したヒープ領域をOSへ返却・解放します。
+
+```c
+free(ptr);
+ptr = NULL; // 安全のため解放後は必ず NULL を代入する習慣をつける
+```
+
+---
+
+### ③ 動的配列の容量倍増（Amortized O(1)）アルゴリズム
+
+固定長の配列では、ファイル数や要素数が事前予測できない場合に要素あふれを起こします。
+これを解決するのが**動的配列（Dynamic Array）**です。
+
+```
+[初期状態: capacity = 4, count = 4]
++----+----+----+----+
+| F1 | F2 | F3 | F4 |   (満杯！)
++----+----+----+----+
+
+[要素追加時: realloc で capacity を 2倍 (8) に拡張]
++----+----+----+----+----+----+----+----+
+| F1 | F2 | F3 | F4 | F5 |    |    |    |
++----+----+----+----+----+----+----+----+
+                     ^
+               count = 5, capacity = 8
+```
+
+1要素追加ごとに `realloc` で +1 サイズ拡大すると、データの全コピーが毎回発生して計算量が $O(N^2)$ に悪化します。
+しかし**容量を2倍ずつ拡張**することで、コピーコストが均等化され、1要素あたりの追加コストはならし計算量（Amortized Time Complexity）で **$O(1)$** となり、非常に効率的になります。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **メモリリーク (Memory Leak)**:
+  `malloc` 等で確保したヒープ領域を `free` せずに放置し、アクセス不能なままメモリ消費が増え続ける現象。サーバーや常駐プログラムでは最終的にメモリ枯渇でクラッシュを引き起こす。
+- **ダングリングポインタ (Dangling Pointer / ぶら下がりポインタ)**:
+  `free()` で解放済みのメモリ領域を指し続けたままのポインタ。解放後に誤ってアクセスすると、未定義動作（データの破損やセグメンテーション違反）の原因となる。
+- **二重解放 (Double Free)**:
+  同じメモリ領域に対して2回 `free()` を呼び出すバグ。ヒープの管理情報が破壊され、セキュリティ脆弱性（任意コード実行など）の原因となる。
+- **AddressSanitizer (ASan)**:
+  コンパイル時に `-fsanitize=address` オプションを付与することで、実行時にメモリリークや境界外アクセス、Double Free 等を即座に検知・レポートしてくれる開発用ツール。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+本フロアでは、`gear/include/file_list.h` にて宣言されているファイルリスト構造体 `FileList` の動的メモリ管理ロジックを `file_list.c` に実装する。
+
+### 構造体定義 (`gear/include/file_list.h`)
+
+```c
+typedef struct {
+    char *filename;     // 動的確保したファイル名文字列へのポインタ
+    char extension[32]; // 固定長拡張子バッファ (例: "c", "txt")
+    size_t size_bytes;  // ファイルサイズ
+} FileItem;
+
+typedef struct {
+    FileItem *items;    // FileItem の動的配列ポインタ
+    size_t count;       // 現在格納されている要素数
+    size_t capacity;    // 現在確保されている最大容量
+} FileList;
+```
+
+---
+
+### 実装すべき3つの関数仕様
+
+#### 1. `int init_file_list(FileList *list, size_t initial_capacity)`
+- **説明**: `FileList` 構造体を初期化し、指定された初期容量 `initial_capacity` 分の `FileItem` 配列をヒープ領域に確保する。
+- **引数**:
+  - `list`: 初期化対象の `FileList` ポインタ
+  - `initial_capacity`: 初期確保容量
+- **戻り値**: 成功時は `0`、引数不正（`list == NULL` や `initial_capacity == 0`）または `malloc` 失敗時は `-1`。
+- **処理詳細**:
+  - `list->items` を `malloc(sizeof(FileItem) * initial_capacity)` で確保。
+  - `list->count = 0`
+  - `list->capacity = initial_capacity`
+
+#### 2. `int add_file_item(FileList *list, const char *filename, const char *ext, size_t size_bytes)`
+- **説明**: リストに新しいファイル情報を1件追加する。容量不足時は容量を2倍に拡張する。
+- **引数**:
+  - `list`: 対象の `FileList` ポインタ
+  - `filename`: ファイル名文字列
+  - `ext`: 拡張子文字列
+  - `size_bytes`: バイトサイズ
+- **戻り値**: 成功時は `0`、引数不正（`list == NULL`, `list->items == NULL`, `filename == NULL`, `ext == NULL`）またはメモリ確保失敗時は `-1`。
+- **処理詳細**:
+  - `list->count == list->capacity` の場合、`realloc` を使って容量を `list->capacity * 2` に拡張。
+  - `filename` 用のメモリを `malloc(strlen(filename) + 1)` で動的確保し、文字列をコピー。
+  - `ext` を `extension[32]` バッファへ安全にコピー（末尾ヌル文字 `\0` を保証）。
+  - `size_bytes` を設定し、`list->count++` を行う。
+
+#### 3. `void free_file_list(FileList *list)`
+- **説明**: `FileList` が保持しているすべてのヒープメモリを安全に解放し、初期状態にリセットする。
+- **引数**:
+  - `list`: 対象の `FileList` ポインタ
+- **処理詳細**:
+  - `list` が `NULL` の場合は即座にリターン。
+  - 各要素 (`0` から `count - 1`) の `items[i].filename` をすべて `free` する。
+  - `list->items` 自体を `free` する。
+  - `list->items = NULL`, `list->count = 0`, `list->capacity = 0` へリセット。
+
+---
+
+## 4. クリア手順（ターミナルで実行）
+
+1. 未完成の `file_list.c` を編集し、上記仕様どおりに実装を行う。
+2. テストを実行してメモリリークや動作を検証：
+   ```bash
+   ./test.sh
+   ```
+3. AddressSanitizer による検証が走り、メモリリーク0件・出力正常で `【判定】 CLEARED!` と表示されれば第7層クリアだ！
+
+
+================================================================================
+FILE: Floor_07_Guillotine/file_list.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "file_list.h"
+
+int init_file_list(FileList *list, size_t initial_capacity) {
+    if (list == NULL || initial_capacity == 0) {
+        return -1;
+    }
+
+    /* TODO: malloc で FileItem 配列を initial_capacity 分確保し、
+     * count = 0, capacity = initial_capacity に初期化せよ。
+     * 確保失敗時は -1 を返せ。
+     */
+    (void)list;
+
+    return -1;
+}
+
+int add_file_item(FileList *list, const char *filename, const char *ext, size_t size_bytes) {
+    if (list == NULL || list->items == NULL || filename == NULL || ext == NULL) {
+        return -1;
+    }
+
+    /* TODO:
+     * 1. count == capacity なら realloc で容量を 2 倍に拡張せよ。
+     * 2. item.filename 用のメモリを malloc(strlen(filename) + 1) で確保してコピーせよ。
+     * 3. ext を item.extension バッファへコピーせよ (末尾 \0 を確保)。
+     * 4. size_bytes を設定し、list->count をインクリメントせよ。
+     * メモリ確保失敗時は -1 を返せ。
+     */
+    (void)ext;
+    (void)size_bytes;
+
+    return -1;
+}
+
+void free_file_list(FileList *list) {
+    if (list == NULL) {
+        return;
+    }
+
+    /* TODO:
+     * 1. items 内の各要素の filename をすべて free せよ。
+     * 2. list->items を free せよ。
+     * 3. items = NULL, count = 0, capacity = 0 にリセットせよ。
+     */
+}
+
+
+================================================================================
+FILE: Floor_07_Guillotine/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "file_list.h"
+
+int main(void) {
+    FileList list;
+    size_t initial_cap = 4;
+
+    if (init_file_list(&list, initial_cap) != 0) {
+        fprintf(stderr, "Error: init_file_list failed\n");
+        return 1;
+    }
+
+    if (list.count != 0 || list.capacity != initial_cap || list.items == NULL) {
+        fprintf(stderr, "Error: Invalid initial state\n");
+        free_file_list(&list);
+        return 1;
+    }
+
+    const size_t total_files = 1000;
+    for (size_t i = 0; i < total_files; i++) {
+        char name_buf[64];
+        snprintf(name_buf, sizeof(name_buf), "file_%04zu.dat", i);
+
+        if (add_file_item(&list, name_buf, "dat", (i + 1) * 100) != 0) {
+            fprintf(stderr, "Error: add_file_item failed at index %zu\n", i);
+            free_file_list(&list);
+            return 1;
+        }
+    }
+
+    if (list.count != total_files) {
+        fprintf(stderr, "Error: Expected count %zu, got %zu\n", total_files, list.count);
+        free_file_list(&list);
+        return 1;
+    }
+
+    if (list.capacity < total_files) {
+        fprintf(stderr, "Error: Expected capacity >= %zu, got %zu\n", total_files, list.capacity);
+        free_file_list(&list);
+        return 1;
+    }
+
+    // Check first, middle, and last item
+    if (strcmp(list.items[0].filename, "file_0000.dat") != 0 || list.items[0].size_bytes != 100) {
+        fprintf(stderr, "Error: First item mismatch\n");
+        free_file_list(&list);
+        return 1;
+    }
+
+    if (strcmp(list.items[499].filename, "file_0499.dat") != 0 || list.items[499].size_bytes != 50000) {
+        fprintf(stderr, "Error: Middle item mismatch\n");
+        free_file_list(&list);
+        return 1;
+    }
+
+    if (strcmp(list.items[999].filename, "file_0999.dat") != 0 || list.items[999].size_bytes != 100000) {
+        fprintf(stderr, "Error: Last item mismatch\n");
+        free_file_list(&list);
+        return 1;
+    }
+
+    printf("Successfully added %zu files. Dynamic array capacity expanded to %zu.\n", list.count, list.capacity);
+
+    free_file_list(&list);
+
+    if (list.items != NULL || list.count != 0 || list.capacity != 0) {
+        fprintf(stderr, "Error: List state not properly reset after free_file_list\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_07_Guillotine/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "07" "記憶の断頭台 (The Guillotine of Memory)"
+
+TARGET_IMPL="file_list.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    TARGET_IMPL=".solution/file_list.c"
+fi
+
+# 1. コンパイルチェック（-I../gear/include -fsanitize=address -g）
+gcc -std=c11 -Wall -Wextra -Werror -I../gear/include -fsanitize=address -g -o floor_runner main.c "$TARGET_IMPL" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror -fsanitize=address) 成功"
+
+# 2. 実行およびメモリチェック (AddressSanitizer)
+OUTPUT=$(./floor_runner 2>&1)
+RET_CODE=$?
+
+if [ $RET_CODE -ne 0 ]; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "プログラムが異常終了した（返り値: ${RET_CODE}）。メモリ不具合や例外を点検せよ。"
+fi
+sao_pass "Test 2: 1,000件動的メモリ追加および正常終了を確認"
+
+EXPECTED_SUBSTRING="Successfully added 1000 files."
+if [[ "$OUTPUT" != *"$EXPECTED_SUBSTRING"* ]]; then
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "実行出力が期待された内容を含んでいない。"
+fi
+sao_pass "Test 3: 動的配列拡張と全データ整合性を確認"
+
+rm -f floor_runner
+sao_complete "Floor_07_Guillotine"
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/.solution/cleaner.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+/* Helper function to determine category based on file extension */
+static const char *get_category(const char *filename) {
+    const char *ext = strrchr(filename, '.');
+    if (ext == NULL || ext == filename) {
+        return "Others";
+    }
+
+    if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0) {
+        return "Images";
+    } else if (strcmp(ext, ".pdf") == 0 || strcmp(ext, ".txt") == 0) {
+        return "Docs";
+    } else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
+        return "Code";
+    } else if (strcmp(ext, ".zip") == 0) {
+        return "Archives";
+    } else {
+        return "Others";
+    }
+}
+
+int clean_directory(const char *target_dir, int dry_run) {
+    if (target_dir == NULL) {
+        return -1;
+    }
+
+    DIR *dir = opendir(target_dir);
+    if (dir == NULL) {
+        perror("opendir failed");
+        return -1;
+    }
+
+    struct dirent *entry;
+    int moved_count = 0;
+
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip hidden files starting with '.' (including '.' and '..')
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        // Build full path to the file
+        char old_path[1024];
+        snprintf(old_path, sizeof(old_path), "%s/%s", target_dir, entry->d_name);
+
+        // Get file info using stat
+        struct stat st;
+        if (stat(old_path, &st) != 0) {
+            continue;
+        }
+
+        // Skip subdirectories
+        if (S_ISDIR(st.st_mode)) {
+            continue;
+        }
+
+        // Determine category folder name
+        const char *category = get_category(entry->d_name);
+
+        // Build target subdirectory path and new file path
+        char dest_dir[1024];
+        char new_path[1024];
+        snprintf(dest_dir, sizeof(dest_dir), "%s/%s", target_dir, category);
+        snprintf(new_path, sizeof(new_path), "%s/%s/%s", target_dir, category, entry->d_name);
+
+        if (dry_run == 0) {
+            // Create target directory if it doesn't exist
+            mkdir(dest_dir, 0755);
+
+            // Move file using rename
+            if (rename(old_path, new_path) == 0) {
+                moved_count++;
+            }
+        } else {
+            // Dry run mode: just count
+            moved_count++;
+        }
+    }
+
+    closedir(dir);
+    return moved_count;
+}
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/MISSION.md
+================================================================================
+# 【第8層：外界回廊】〜ファイルとOSの脈動〜
+
+> **茅場晶彦からのシステム通達**:
+> 「見事だ、剣士よ。君はメモリの荒野を抜け、ついにカーネルが管理するストレージの領域……『外界回廊』へと足を踏み入れた。
+> プログラムがメモリ上に展開された一時の夢であるならば、ファイルとはディスクに刻まれる永続的な実体である。
+> ディレクトリを走査し、拡張子を見分け、OSのファイルシステムと直接対話せよ。
+> ここで修得する技術は、のちに最終兵器『`gear clean`』コマンドの核となる」
+
+---
+
+## 1. この階層で学ぶC言語とOSインターフェースの核心
+
+これまではメモリ上のデータ（変数や動的配列）を扱ってきましたが、プログラムが終了してもデータを残すには**ファイルシステム**との連携が不可欠です。本階層では、C標準ライブラリのファイル入出力と、POSIX（Unix/Linux）標準のシステムコール／ディレクトリ操作APIを習得します。
+
+---
+
+### ① ファイル入出力の基本（`fopen`, `fprintf`, `fclose`）
+
+C言語でファイルにアクセスする際は、`FILE` 構造体ポインタ（ファイルストリーム）を介して操作します。
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    // 1. ファイルを開く ("w" は書き込みモード、"r" は読み込みモード、"a" は追記モード)
+    FILE *fp = fopen("log.txt", "w");
+    if (fp == NULL) {
+        perror("Failed to open file");
+        return 1;
+    }
+
+    // 2. データをファイルに書き込む
+    fprintf(fp, "[SYSTEM LOG] Link Start!\n");
+
+    // 3. ファイルを閉じる（バッファのフラッシュとリソース解放）
+    fclose(fp);
+    return 0;
+}
+```
+
+> ⚠️ **注意**: `fopen` が失敗すると `NULL` が返ります。必ず `NULL` チェックを行う必要があります。また、開いたファイルは必ず `fclose` で閉じなければファイルリーク（リソース漏れ）の原因となります。
+
+---
+
+### ② ディレクトリの走査（`<dirent.h>`: `opendir`, `readdir`, `closedir`）
+
+フォルダ（ディレクトリ）の中身を順に読み出すには、POSIXヘッダ `<dirent.h>` の関数群を使用します。
+
+```c
+#include <stdio.h>
+#include <dirent.h>
+
+void list_files(const char *dir_path) {
+    DIR *dir = opendir(dir_path);
+    if (dir == NULL) {
+        perror("opendir failed");
+        return;
+    }
+
+    struct dirent *entry;
+    // readdir はディレクトリ内の要素を1つずつ返す。末尾に達すると NULL になる
+    while ((entry = readdir(dir)) != NULL) {
+        // entry->d_name にファイル名/フォルダ名が入っている
+        printf("Found: %s\n", entry->d_name);
+    }
+
+    closedir(dir);
+}
+```
+
+> 💡 **重要ルール**: `readdir` はカレントディレクトリを表す `.` や親ディレクトリを表す `..` も返します。隠しファイル（先頭が `.` のファイル）をスキップしたい場合は、`entry->d_name[0] == '.'` の条件判定で除外します。
+
+---
+
+### ③ ファイル情報の取得とフォルダ作成（`<sys/stat.h>`: `stat`, `mkdir`）
+
+エントリが「ファイル」か「ディレクトリ（フォルダ）」かを判定したり、新しいディレクトリを作成するには `<sys/stat.h>` を利用します。
+
+#### ファイル種別・属性の取得 (`stat`)
+```c
+#include <sys/stat.h>
+
+struct stat st;
+if (stat(full_path, &st) == 0) {
+    if (S_ISDIR(st.st_mode)) {
+        // ディレクトリの場合の処理
+    } else if (S_ISREG(st.st_mode)) {
+        // 通常ファイルの場合の処理
+    }
+}
+```
+
+#### ディレクトリの作成 (`mkdir`)
+```c
+#include <sys/stat.h>
+
+// 第2引数の 0755 はパーミッション（所有者: 読み書き実行、グループ/その他: 読み実行）
+if (mkdir("NewFolder", 0755) != 0) {
+    // 既に存在する場合などはエラーとなる（errno == EEXIST）
+}
+```
+
+---
+
+### ④ ファイルの移動・リネーム（`rename`）
+
+ファイルを別の場所や別の名前に移動するには、標準関数 `rename` を使います。
+
+```c
+#include <stdio.h>
+
+// "dungeon_box/map.png" を "dungeon_box/Images/map.png" へ移動
+if (rename("dungeon_box/map.png", "dungeon_box/Images/map.png") == 0) {
+    printf("Successfully moved!\n");
+} else {
+    perror("rename failed");
+}
+```
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **ファイルディスクリプタ（File Descriptor / FD）**:
+  OSが管理する「開かれたファイルやソケット」を識別するための非負の整数値。0は標準入力（`stdin`）、1は標準出力（`stdout`）、2は標準エラー出力（`stderr`）に割り当てられており、`fopen` などで扱われる `FILE*` 構造体内部でも低レイヤのFDが保持されている。
+- **パーミッション（Permission / アクセス権限）**:
+  Unix/Linux環境において、ファイルやディレクトリに対して「誰が（所有者/グループ/その他）」「どのような操作（Read:4, Write:2, Execute:1）」を行えるかを定めた3桁の8進数（例: `0755` や `0644`）。
+- **サンドボックス（Sandbox / 砂場）**:
+  本番のデータやOSシステム全体に影響を与えないよう、隔離された実験用の領域（フォルダや環境）。本課題の `./dungeon_box/` は、ファイル整理機能を安心してテストするためのサンドボックス領域である。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+本階層の目的は、乱雑に置かれたダンジョン内のドロップアイテム（ファイル）を、拡張子に応じて自動的に適切なカテゴリフォルダ（`Images`, `Docs`, `Code`, `Archives`, `Others`）へ仕分け・移動するディレクトリクリーン関数 `clean_directory` を完成させることである。
+
+### 対象ファイルと振り分けルール
+
+1. **対象ディレクトリ**: `target_dir`（例: `./dungeon_box`）
+2. **スキップ条件**:
+   - 先頭が `.` で始まる隠しファイル（例: `.hidden_key`）およびディレクトリ参照（`.`, `..`）
+   - サブディレクトリ自体（`stat` で `S_ISDIR` に該当するもの）
+3. **拡張子と分類先フォルダ**:
+   - `.png`, `.jpg` ➔ `Images`
+   - `.pdf`, `.txt` ➔ `Docs`
+   - `.c`, `.h` ➔ `Code`
+   - `.zip` ➔ `Archives`
+   - 上記以外の通常の拡張子／拡張子なし ➔ `Others`
+4. **ディレクトリ作成とファイル移動**:
+   - 該当するサブフォルダ（例: `target_dir/Images`）が存在しない場合は `mkdir(subfolder_path, 0755)` で自動作成する。
+   - `dry_run == 0` の場合: ファイルを `rename()` で移動し、処理した件数をカウントする。
+   - `dry_run == 1` の場合: 実際にはファイル移動（`rename`）やフォルダ作成を行わず、移動対象となるファイルの件数のみをカウントして返す。
+5. **返り値**:
+   - 整理（または整理予定）対象となったファイルの合計件数（`int`）を返す。
+
+---
+
+## 4. クリア手順と検証方法
+
+1. **環境セットアップ**:
+   ```bash
+   ./setup_sandbox.sh
+   ```
+2. **未完成状態でのテスト実行（必ず FAIL）**:
+   ```bash
+   ./test.sh
+   ```
+3. **模範解答でのテスト検証（必ず PASS）**:
+   ```bash
+   ./test.sh --solution
+   ```
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/cleaner.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+/*
+ * 【ミッション】
+ * target_dir 内を走査し、拡張子に応じてファイルを各サブフォルダ（Images, Docs, Code, Archives, Others）へ分類・移動せよ。
+ *
+ * 仕様:
+ * 1. target_dir 内のエントリを opendir / readdir で走査する。
+ * 2. ドット '.' で始まる隠しファイル（例: .hidden_key）やディレクトリ参照 (., ..) はスキップする。
+ * 3. サブディレクトリ自体 (stat で S_ISDIR に該当するもの) はスキップする。
+ * 4. 拡張子に応じて移動先サブディレクトリを特定する:
+ *    - ".png", ".jpg" ➔ "Images"
+ *    - ".pdf", ".txt" ➔ "Docs"
+ *    - ".c", ".h"     ➔ "Code"
+ *    - ".zip"         ➔ "Archives"
+ *    - その他         ➔ "Others"
+ * 5. dry_run == 0 の場合:
+ *    - 移動先ディレクトリが存在しなければ mkdir(subfolder_path, 0755) で作成する。
+ *    - rename(old_path, new_path) でファイルを移動する。
+ * 6. 移動（または移動予定）となった件数をカウントして返す。
+ */
+
+int clean_directory(const char *target_dir, int dry_run) {
+    (void)target_dir;
+    (void)dry_run;
+
+    /* TODO: opendir, readdir, stat, rename 等を用いてディレクトリクリーン処理を実装せよ */
+
+    return -1;
+}
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../shared/sao_ui.h"
+
+int clean_directory(const char *target_dir, int dry_run);
+
+int main(int argc, char *argv[]) {
+    const char *target_dir = "./dungeon_box";
+    int dry_run = 0;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--dry-run") == 0) {
+            dry_run = 1;
+        } else if (argv[i][0] != '-') {
+            target_dir = argv[i];
+        }
+    }
+
+    SAO_PRINT_HEADER("OUTER CORRIDOR - FILE CLEANER");
+    printf("Target Directory: %s\n", target_dir);
+    printf("Mode            : %s\n", dry_run ? "DRY-RUN (SIMULATION)" : "EXECUTE (REAL MOVE)");
+
+    int count = clean_directory(target_dir, dry_run);
+
+    if (count < 0) {
+        printf("Error: Directory cleaning failed.\n");
+        SAO_PRINT_FOOTER();
+        return 1;
+    }
+
+    printf("Processed Files : %d\n", count);
+    SAO_PRINT_FOOTER();
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/setup_sandbox.sh
+================================================================================
+#!/bin/bash
+set -e
+
+# カレントディレクトリをスクリプトの存在するディレクトリに変更
+cd "$(dirname "$0")"
+
+TARGET_DIR="./dungeon_box"
+
+# 実験用フォルダを再作成
+rm -rf "$TARGET_DIR"
+mkdir -p "$TARGET_DIR"
+
+# ダミーファイルの生成
+# map.png, avatar.jpg, quest.pdf, readme.txt, kernel.c, backup.zip, mystery.dat, .hidden_key
+touch "$TARGET_DIR/map.png"
+touch "$TARGET_DIR/avatar.jpg"
+touch "$TARGET_DIR/quest.pdf"
+touch "$TARGET_DIR/readme.txt"
+touch "$TARGET_DIR/kernel.c"
+touch "$TARGET_DIR/backup.zip"
+touch "$TARGET_DIR/mystery.dat"
+touch "$TARGET_DIR/.hidden_key"
+
+echo "Sandbox environment created at $TARGET_DIR"
+
+
+================================================================================
+FILE: Floor_08_OuterCorridor/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "08" "外界回廊 (The Outer Corridor)"
+
+CLEANER_SRC="cleaner.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    CLEANER_SRC=".solution/cleaner.c"
+fi
+
+# 1. コンパイルチェック
+gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c "$CLEANER_SRC" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror) 成功"
+
+# 2. サンドボックス環境セットアップ
+./setup_sandbox.sh > /dev/null 2>&1
+if [ ! -d "./dungeon_box" ]; then
+    rm -f floor_runner
+    sao_fail "setup_sandbox.sh による ./dungeon_box の作成に失敗した。"
+fi
+sao_pass "Test 2: サンドボックス環境の初期化成功"
+
+# 3. dry_run = 1 (シミュレーション) 検証
+OUTPUT_DRY=$(./floor_runner ./dungeon_box --dry-run)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "dry_run 実行時の終了コードが 0 ではない (現在の返り値: ${RET_CODE})。"
+fi
+
+# dry_run ではファイルが移動せず、全7ファイルが直下に残っていることを確認
+COUNT_DRY=$(ls -1 ./dungeon_box | grep -v '^\.' | wc -l)
+if [ "$COUNT_DRY" -ne 7 ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "dry_run モードにもかかわらずファイルが移動または削除された (直下残数: ${COUNT_DRY}, 期待値: 7)。"
+fi
+sao_pass "Test 3: dry_run モードでファイルが移動しないことを確認 (7件検出)"
+
+# 4. dry_run = 0 (実際整理) 検証
+OUTPUT_REAL=$(./floor_runner ./dungeon_box)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "整理実行時の終了コードが 0 ではない (現在の返り値: ${RET_CODE})。"
+fi
+
+# サブディレクトリと移動状況の検証
+# Images: map.png, avatar.jpg
+# Docs: quest.pdf, readme.txt
+# Code: kernel.c
+# Archives: backup.zip
+# Others: mystery.dat
+# .hidden_key は ./dungeon_box 直下に残る
+
+if [ ! -f "./dungeon_box/Images/map.png" ] || [ ! -f "./dungeon_box/Images/avatar.jpg" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "Images フォルダへのファイル振り分け失敗。"
+fi
+
+if [ ! -f "./dungeon_box/Docs/quest.pdf" ] || [ ! -f "./dungeon_box/Docs/readme.txt" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "Docs フォルダへのファイル振り分け失敗。"
+fi
+
+if [ ! -f "./dungeon_box/Code/kernel.c" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "Code フォルダへのファイル振り分け失敗。"
+fi
+
+if [ ! -f "./dungeon_box/Archives/backup.zip" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "Archives フォルダへのファイル振り分け失敗。"
+fi
+
+if [ ! -f "./dungeon_box/Others/mystery.dat" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "Others フォルダへのファイル振り分け失敗。"
+fi
+
+if [ ! -f "./dungeon_box/.hidden_key" ]; then
+    rm -f floor_runner
+    rm -rf ./dungeon_box
+    sao_fail "隠しファイル .hidden_key が消失した。"
+fi
+
+sao_pass "Test 4: 拡張子別サブフォルダへの正確なファイル振り分けおよび隠しファイルの維持を確認"
+
+# 後片付け
+rm -f floor_runner
+rm -rf ./dungeon_box
+
+sao_complete "Floor_08_OuterCorridor"
+
+
+================================================================================
+FILE: Floor_09_IronWall/.solution/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+int main(int argc, char *argv[]) {
+    // 1. コマンドライン引数チェック
+    if (argc < 2) {
+        fprintf(stderr, "[USAGE ERROR] File path required\n");
+        return 1;
+    }
+
+    const char *filepath = argv[1];
+    struct stat st;
+
+    // 2. ディレクトリ判定 (stat & S_ISDIR)
+    if (stat(filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
+        fprintf(stderr, "[IO ERROR] Target is a directory\n");
+        return 2;
+    }
+
+    // 3. ファイルオープン & エラー判定 (fopen & strerror(errno))
+    FILE *fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "[IO ERROR] %s\n", strerror(errno));
+        return 2;
+    }
+
+    // 4. 行数カウント
+    long lines = 0;
+    int ch;
+    while ((ch = fgetc(fp)) != EOF) {
+        if (ch == '\n') {
+            lines++;
+        }
+    }
+
+    fclose(fp);
+
+    // stdout に結果を出力
+    printf("LINES: %ld\n", lines);
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_09_IronWall/MISSION.md
+================================================================================
+# 【第9層：堅牢なる城壁】〜UNIX思想とエラー処理〜
+
+> **茅場晶彦からのシステム通達**:
+> 「ようこそ、第9層『堅牢なる城壁』へ。
+> これまで君たちはプログラムを『正常に動かすこと』に注力してきた。しかし、現実のシステムにおいて真の堅牢さを決定づけるのは、予期せぬエラーに遭遇した時の振る舞いだ。
+> 入力データの欠落、アクセス権限の不足、存在しないリソース……あらゆる異常状態を察知し、適切なストリームへエラーを刻み、正しい終了コードとともに退場する。これこそがUNIXの哲学であり、システムの崩壊を防ぐ絶対防壁（アイアンウォール）となるのだ」
+
+---
+
+## 1. この階層で学ぶC言語とUNIX哲学の核心
+
+### ① なぜ標準出力（`stdout`）と標準エラー出力（`stderr`）を分離するのか？
+UNIXシステムには、プロセスが標準で持つ3つのI/Oストリームが存在します。
+
+| ストリーム名 | ファイル記述子 | C言語でのストリーム | 用途 |
+| :--- | :--- | :--- | :--- |
+| 標準入力 (`stdin`) | `0` | `stdin` | キーボードやパイプからのデータ入力 |
+| 標準出力 (`stdout`) | `1` | `stdout` | プログラムの正常な実行結果・データの出力 |
+| 標準エラー出力 (`stderr`) | `2` | `stderr` | エラーメッセージ、警告、ログの出力 |
+
+#### 分離する最大の理由：パイプライン処理の保護
+UNIX思想の根本には「1つのプログラムには1つのことを上手くやらせよ（Do One Thing and Do It Well）」という原則があります。複数のプログラムをパイプ（`|`）で繋ぐ際、`stdout` のみが次のプログラムへ受け渡されます。
+
+もしエラーメッセージを `stdout` に出力してしまうと、後続のプログラムがエラー文字列を正常なデータと誤認して処理を開始し、システム全体に二次災害を引き起こしてしまいます。エラーメッセージを `stderr` に出力することで、パイプラインのデータを汚染せずにエラーを通知できます。
+
+```text
+[正常なデータ流路]
+./floor_runner data.txt | grep "TARGET" -> (stdoutのみがパイプに渡る)
+
+[stderr分離時]
+./floor_runner invalid.txt 2> error.log | grep "TARGET"
+-> stdoutはパイプへ、stderrはerror.logへ分離保存される
+```
+
+---
+
+### ② `<errno.h>` と `strerror(errno)` / `perror`
+C言語の標準ライブラリ関数（`fopen` や `stat` など）が失敗した際、システムはグローバル変数 `errno` にエラー番号（整数）をセットします。
+
+- **`errno`**: 直前に実行されたシステムコール/標準ライブラリのエラー番号（例: `ENOENT` = 2, `EACCES` = 13）。
+- **`strerror(errno)`**: エラー番号に対応する人間が読める文字列メッセージ（例: `"No such file or directory"`, `"Permission denied"`）を返す関数（`<string.h>` に定義）。
+- **`fprintf(stderr, ...)`**: `stderr` に対して書式設定付きで出力する関数。
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+
+FILE *fp = fopen("missing.txt", "r");
+if (fp == NULL) {
+    // stderrにエラーメッセージを出力
+    fprintf(stderr, "[IO ERROR] %s\n", strerror(errno));
+    return 2;
+}
+```
+
+---
+
+### ③ 終了ステータス規約（Exit Status）
+プロセスが終了するとき、OSに返却する数値（`0`〜`255`）を終了ステータス（Exit Status / Return Code）と呼びます。シェルスクリプトや後続プロセスは `$?` を参照して結果を判定します。
+
+| 終了コード | 意味 | 本階層での割り当て |
+| :--- | :--- | :--- |
+| `0` | 成功（SUCCESS） | ファイル読み込み＆行数カウント成功 |
+| `1` | 汎用エラー / 引数エラー（USAGE ERROR） | コマンドライン引数が足りない場合 |
+| `2` | I/O・環境エラー（IO ERROR） | ファイル非存在、権限不足、ディレクトリ指定など |
+
+---
+
+### ④ UNIXパイプラインとリダイレクト
+シェルコマンドにおける出力の制御記号をマスターしましょう。
+
+- `>` : `stdout` をファイルへ上書き保存（例: `./app > out.txt`）
+- `2>` : `stderr` をファイルへ上書き保存（例: `./app 2> err.txt`）
+- `2>&1` : `stderr` を `stdout` と同じ出力先に統合
+- `|` : 前のコマンドの `stdout` を次のコマンドの `stdin` に流し込む
+
+---
+
+### ⑤ Gitのブランチ・Pull Request運用
+大規模開発や parallel AI 開発では、メインブランチ（`main`）に直接変更を加えることは固く禁じられています。
+
+1. **ブランチ切替**: 機能追加やバグ修正ごとに `feature/floor-09` などの独立したブランチを作成して作業する。
+2. **コンフリクト防止**: 担当外のディレクトリや共有ファイル（`Makefile` や `AGENTS.md` など）を変更しない。
+3. **Pull Request (PR)**: 作業完了後、テストを通過したコードのみを PR として提出し、自動CIテストおよびコードレビューを経てマージする。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **`stdout` / `stderr`**:
+  標準出力と標準エラー出力。画面上に一見同じように表示されていても、内部の出力ストリーム（ファイル記述子 1 と 2）として完全に区別されている。
+- **`errno`（Error Number）**:
+  システムコールやC標準関数が失敗した原因を示すスレッドローカルなグローバル変数。直後の関数呼出で上書きされる前に確認・保持する必要がある。
+- **終了ステータス（Exit Status / Return Code）**:
+  プログラムが OS や親プロセスに報告する状態コード。UNIXでは `0` が成功、非ゼロが異常終了を意味する。
+- **パイプライン（Pipeline `|`）**:
+  コマンドの出力を別のコマンドの入力へ直結するメカニズム。UNIXの強力な単機能ツール連携を支える基盤。
+- **Pull Request（PR）**:
+  自身のブランチで行った変更を本線（`main`）に取り込むよう依頼する Git の仕組み。
+
+---
+
+## 3. ボス戦ミッション（実装仕様）
+
+本階層の課題プログラム `main.c` は、指定されたファイルの行数をカウントして出力するツールである。
+受講者は異常系エラーハンドリングを完璧に実装し、堅牢なプログラムを完成させよ。
+
+### プログラムの仕様
+コマンドライン引数としてファイルパスを1つ受け取り、そのファイルの行数を計測して出力する。
+
+#### 1. 正常系仕様
+- ファイルを正常に読み込み、行数（改行文字 `\n` の個数、あるいは最終行）をカウントし、`stdout` に以下の形式で出力して終了コード `0` で終了する。
+  ```text
+  LINES: <行数>
+  ```
+
+#### 2. 異常系仕様（判定順序とエラーメッセージ・終了コード）
+エラー発生時は **必ず `stderr` に** エラーメッセージを出力し、指定の終了コードで終了せよ（`stdout` には一切出力してはならない）。
+
+1. **引数不足（USAGE ERROR）**:
+   - 条件: 引数が指定されていない場合 (`argc < 2`)
+   - `stderr` 出力: `[USAGE ERROR] File path required\n`
+   - 終了コード: `1`
+
+2. **ディレクトリ指定エラー（IO ERROR）**:
+   - 条件: 指定されたパスがディレクトリである場合 (`stat` 関数と `S_ISDIR` マクロで判定)
+   - `stderr` 出力: `[IO ERROR] Target is a directory\n`
+   - 終了コード: `2`
+
+3. **ファイルオープンエラー（IO ERROR）**:
+   - 条件: ファイルが存在しない、または読み取り権限がない場合 (`fopen(path, "r") == NULL`)
+   - `stderr` 出力: `[IO ERROR] <strerror(errno)>\n`
+   - 終了コード: `2`
+
+---
+
+## 4. クリア手順（ターミナルで実行）
+
+1. 手動でコンパイルして動作検証する場合:
+   ```bash
+   gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c
+   ./floor_runner
+   ```
+
+2. ボス戦（自動採点スクリプト）を実行する場合:
+   ```bash
+   ./test.sh
+   ```
+   未完成コードでは FAILED になり、模範解答検証 (`./test.sh --solution`) では CLEARED! になることを確認せよ。
+
+
+================================================================================
+FILE: Floor_09_IronWall/main.c
+================================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+int main(int argc, char *argv[]) {
+    /* TODO: 1. 引数チェック
+     * argc < 2 の場合、stderr に "[USAGE ERROR] File path required\n" と出力し、
+     * 終了コード 1 で終了せよ。
+     */
+    if (argc < 2) {
+        /* TODO: stderr への出力と exit(1) または return 1 */
+        return 0; // 現在は不完全な処理
+    }
+
+    const char *filepath = argv[1];
+    struct stat st;
+
+    /* TODO: 2. ディレクトリ判定
+     * stat(filepath, &st) == 0 かつ S_ISDIR(st.st_mode) の場合、
+     * stderr に "[IO ERROR] Target is a directory\n" と出力し、
+     * 終了コード 2 で終了せよ。
+     */
+    if (stat(filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
+        /* TODO: stderr への出力と exit(2) または return 2 */
+        return 0;
+    }
+
+    /* TODO: 3. ファイルオープンとエラー処理
+     * fopen(filepath, "r") でファイルを開く。
+     * NULL が返された場合（ファイル非存在や権限不足）、
+     * stderr に "[IO ERROR] <strerror(errno)>\n" と出力し、
+     * 終了コード 2 で終了せよ。
+     */
+    FILE *fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        /* TODO: stderr への出力と exit(2) または return 2 */
+        return 0;
+    }
+
+    /* TODO: 4. 行数カウントと stdout 出力
+     * ファイルの内容を読み込んで行数をカウントし、
+     * stdout に "LINES: <行数>\n" と出力せよ。
+     * 処理完了後は fclose(fp) を行い、終了コード 0 を返せ。
+     */
+    fclose(fp);
+
+    return 1; // TODO: 正しい実装では 0 を返す
+}
+
+
+================================================================================
+FILE: Floor_09_IronWall/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "09" "堅牢なる城壁 (The Iron Wall)"
+
+SRC_FILE="main.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/main.c"
+fi
+
+# 一時ファイルのクリーンアップ関数
+cleanup() {
+    rm -f floor_runner compile_err.log stdout.log stderr.log test_sample.txt no_perm.txt
+}
+trap cleanup EXIT
+
+# 1. コンパイルチェック
+gcc -std=c11 -Wall -Wextra -Werror -o floor_runner "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや警告を見直したまえ。"
+fi
+sao_pass "Test 1: 厳格コンパイル (-Wall -Wextra -Werror) 成功"
+
+# テスト2: 正常ファイルの行数カウント (Pattern 1)
+printf "Line 1\nLine 2\nLine 3\n" > test_sample.txt
+./floor_runner test_sample.txt 1> stdout.log 2> stderr.log
+RET_CODE=$?
+
+if [ $RET_CODE -ne 0 ]; then
+    sao_fail "正常ファイル指定時の終了コードが 0 ではない (返り値: ${RET_CODE})。"
+fi
+
+STDOUT_OUT=$(cat stdout.log)
+if [ "$STDOUT_OUT" != "LINES: 3" ]; then
+    echo "--- 実際の stdout ---"
+    echo "$STDOUT_OUT"
+    sao_fail "正常ファイル指定時の stdout 出力が 'LINES: 3' と一致しない。"
+fi
+
+if [ -s stderr.log ]; then
+    echo "--- 実際の stderr ---"
+    cat stderr.log
+    sao_fail "正常処理時に stderr へ不要な出力がされている。"
+fi
+sao_pass "Pattern 1: 正常ファイル行数カウント (stdout: 'LINES: 3', exit: 0, stderr: 空) 成功"
+
+# テスト3: 引数なしエラー (Pattern 2)
+./floor_runner 1> stdout.log 2> stderr.log
+RET_CODE=$?
+
+if [ $RET_CODE -ne 1 ]; then
+    sao_fail "引数なし時の終了コードが 1 ではない (返り値: ${RET_CODE})。"
+fi
+
+if [ -s stdout.log ]; then
+    sao_fail "引数なしエラー時に stdout へ不要な出力がされている。"
+fi
+
+STDERR_OUT=$(cat stderr.log)
+if [[ "$STDERR_OUT" != *"[USAGE ERROR] File path required"* ]]; then
+    echo "--- 実際の stderr ---"
+    echo "$STDERR_OUT"
+    sao_fail "引数なしエラー時の stderr メッセージが仕様と異なる。"
+fi
+sao_pass "Pattern 2: 引数なし異常系 (stderr: '[USAGE ERROR] File path required', exit: 1) 成功"
+
+# テスト4: 存在しないファイル (Pattern 3)
+./floor_runner nonexistent_file_xyz.txt 1> stdout.log 2> stderr.log
+RET_CODE=$?
+
+if [ $RET_CODE -ne 2 ]; then
+    sao_fail "存在しないファイル指定時の終了コードが 2 ではない (返り値: ${RET_CODE})。"
+fi
+
+if [ -s stdout.log ]; then
+    sao_fail "存在しないファイル指定時に stdout へ不要な出力がされている。"
+fi
+
+STDERR_OUT=$(cat stderr.log)
+if [[ "$STDERR_OUT" != *"[IO ERROR]"* ]]; then
+    echo "--- 実際の stderr ---"
+    echo "$STDERR_OUT"
+    sao_fail "存在しないファイル指定時の stderr メッセージに '[IO ERROR]' が含まれていない。"
+fi
+sao_pass "Pattern 3: 存在しないファイル異常系 (stderr: '[IO ERROR] ...', exit: 2) 成功"
+
+# テスト5: ディレクトリ指定エラー (Pattern 4)
+./floor_runner . 1> stdout.log 2> stderr.log
+RET_CODE=$?
+
+if [ $RET_CODE -ne 2 ]; then
+    sao_fail "ディレクトリ指定時の終了コードが 2 ではない (返り値: ${RET_CODE})。"
+fi
+
+if [ -s stdout.log ]; then
+    sao_fail "ディレクトリ指定時に stdout へ不要な出力がされている。"
+fi
+
+STDERR_OUT=$(cat stderr.log)
+if [[ "$STDERR_OUT" != *"[IO ERROR] Target is a directory"* ]]; then
+    echo "--- 実際の stderr ---"
+    echo "$STDERR_OUT"
+    sao_fail "ディレクトリ指定時の stderr メッセージが '[IO ERROR] Target is a directory' と一致しない。"
+fi
+sao_pass "Pattern 4: ディレクトリ指定異常系 (stderr: '[IO ERROR] Target is a directory', exit: 2) 成功"
+
+# テスト6: 権限0000ファイルエラー (Pattern 5)
+touch no_perm.txt
+chmod 0000 no_perm.txt
+
+# root(EUID=0)で実行されている場合はパーミッションエラーをスキップする等の考慮も必要だが、sandboxはjulesユーザ
+./floor_runner no_perm.txt 1> stdout.log 2> stderr.log
+RET_CODE=$?
+
+chmod 644 no_perm.txt
+rm -f no_perm.txt
+
+if [ $RET_CODE -ne 2 ]; then
+    sao_fail "権限なしファイル指定時の終了コードが 2 ではない (返り値: ${RET_CODE})。"
+fi
+
+if [ -s stdout.log ]; then
+    sao_fail "権限なしファイル指定時に stdout へ不要な出力がされている。"
+fi
+
+STDERR_OUT=$(cat stderr.log)
+if [[ "$STDERR_OUT" != *"[IO ERROR]"* ]]; then
+    echo "--- 実際の stderr ---"
+    echo "$STDERR_OUT"
+    sao_fail "権限なしファイル指定時の stderr メッセージに '[IO ERROR]' が含まれていない。"
+fi
+sao_pass "Pattern 5: 権限なしファイル異常系 (stderr: '[IO ERROR] ...', exit: 2) 成功"
+
+sao_complete "Floor_09_IronWall"
+
+
+================================================================================
+FILE: Floor_10_RubyPalace/.solution/main.c
+================================================================================
+#include <stdio.h>
+#include <sys/utsname.h>
+#include <sys/statvfs.h>
+#include "../../shared/sao_ui.h"
+
+int main(void) {
+    struct utsname uts;
+    if (uname(&uts) != 0) {
+        return 1;
+    }
+
+    struct statvfs stat;
+    if (statvfs(".", &stat) != 0) {
+        return 1;
+    }
+
+    double storage_used = 0.0;
+    if (stat.f_blocks > 0) {
+        double total_bytes = (double)stat.f_blocks * (double)stat.f_frsize;
+        double free_bytes  = (double)stat.f_bavail * (double)stat.f_frsize;
+        double used_bytes  = total_bytes - free_bytes;
+        storage_used = (used_bytes / total_bytes) * 100.0;
+    }
+
+    SAO_PRINT_HEADER("RUBY PALACE - FINAL CLEAR");
+
+    printf("OS      : %s (%s)\n", uts.sysname, uts.machine);
+    printf("STORAGE : %.1f%% USED\n", storage_used);
+    printf("--------------------------------------------------\n");
+    printf("      /\\\n");
+    printf("     /  \\       SWORD ART ONLINE : KERNEL\n");
+    printf("    / /\\ \\      =========================\n");
+    printf("   / /  \\ \\     CLEAR CERTIFICATE\n");
+    printf("  / /____\\ \\    \n");
+    printf(" / ________ \\   PLAYER : KIRITO\n");
+    printf("/ /        \\ \\  RANK   : S [MASTER OF KERNEL]\n");
+
+    SAO_PRINT_FOOTER();
+
+    return 0;
+}
+
+
+================================================================================
+FILE: Floor_10_RubyPalace/MISSION.md
+================================================================================
+# 【第10層：紅玉宮（最終試験）】〜完全なるデプロイ〜
+
+> **茅場晶彦からの最終通達**:
+> 「よくぞここまで辿り着いた、勇敢なるプログラマたちよ。
+> ここは浮遊城アインクラッド最上層、紅玉宮。
+> 君たちが第1層で初めて『Hello World』の洗礼を受けてから、幾多の構造体、ポインタの罠、メモリ管理の深淵を潜り抜けてきた。
+>
+> だが、ただコードを書くだけでは本物の『システム開発者』とは言えない。
+> 記述したプログラムを極限まで最適化し、オペレーティングシステムの深層（カーネル）から直接情報を汲み上げ、
+> ユーザーの実行環境（`PATH`）へ正しくデプロイして初めて、君たちのプロダクトは命を宿すのだ。
+>
+> これが最後の試験となる。
+> 浮遊城のシステム核（カーネル）に直接システムコールを打ち込み、全領域のクリア認定証を刻印せよ！」
+
+---
+
+## 1. この階層で学ぶC言語とPOSIXカーネルの核心
+
+最上層である第10層では、C言語標準ライブラリの枠を超え、POSIX規格で定められたOSカーネル直結のシステムコール（System Call）と、プロダクションビルドにおけるコンパイラ最適化・デプロイ技術を修得します。
+
+```
+ +-------------------------------------------------------+
+ |                 User Application (gear)              |
+ +-------------------------------------------------------+
+             |                               |
+    uname()  | System Call          statvfs()| System Call
+             v                               v
+ +-------------------------------------------------------+
+ |                  OS Kernel (POSIX)                    |
+ +-------------------------------------------------------+
+ |  System Information  |      Virtual File System       |
+ |  (sysname, machine)  |  (f_blocks, f_bavail, f_bsize) |
+ +-------------------------------------------------------+
+```
+
+---
+
+### ① `<sys/utsname.h>` : システム情報の取得 `uname()`
+
+OSの名前、ノード名、カーネルバージョン、ハードウェアアーキテクチャなどの低レイヤ情報を取得するには、`<sys/utsname.h>` に定義された `uname()` 関数を使用します。
+
+#### 構造体 `struct utsname` の主要メンバー
+
+```c
+#include <sys/utsname.h>
+
+struct utsname uts;
+if (uname(&uts) == 0) {
+    printf("OS Name : %s\n", uts.sysname);  // 例: Linux, Darwin
+    printf("Node    : %s\n", uts.nodename); // ホスト名
+    printf("Release : %s\n", uts.release);  // カーネルリリース
+    printf("Machine : %s\n", uts.machine);  // 例: x86_64, aarch64
+}
+```
+
+- **`sysname`**: オペレーティングシステムの名前（Linux, Darwin など）。
+- **`machine`**: CPUアーキテクチャ識別子（`x86_64`, `aarch64` など）。
+
+---
+
+### ② `<sys/statvfs.h>` : ストレージ統計の取得 `statvfs()`
+
+ディスクやファイルシステムの総容量・使用率を正確に算出するため、`<sys/statvfs.h>` の `statvfs()` を使用します。
+
+```c
+#include <sys/statvfs.h>
+
+struct statvfs stat;
+if (statvfs(".", &stat) == 0) {
+    // 総ブロック数 × ブロックサイズ ＝ 総バイト数
+    unsigned long long total_bytes = (unsigned long long)stat.f_blocks * stat.f_frsize;
+
+    // 利用可能ブロック数 × ブロックサイズ ＝ 空きバイト数
+    unsigned long long free_bytes  = (unsigned long long)stat.f_bavail * stat.f_frsize;
+
+    // 使用済みバイト数
+    unsigned long long used_bytes  = total_bytes - free_bytes;
+
+    // 使用率（パーセンテージ）の計算
+    double storage_used = ((double)used_bytes / (double)total_bytes) * 100.0;
+
+    printf("Storage Used: %.1f%%\n", storage_used);
+}
+```
+
+#### 重要ポイント：
+- **`stat.f_blocks`**: ファイルシステムの総ブロック数。
+- **`stat.f_bavail`**: 一般ユーザーが利用可能な空きブロック数。
+- **`stat.f_frsize`**: 基礎ブロックサイズ（バイト）。
+- ゼロ除算（`total_bytes == 0`）を防止するため、計算前に必ずチェックまたは防御コードを入れます。
+
+---
+
+### ③ リリース最適化コンパイル（`-O2` オプション）
+
+開発段階（デバッグ時）では `-g` や `-O0` を指定してコンパイルしますが、本番環境（プロダクション）へデプロイするバイナリでは GCC/Clang の最適化フラグ **`-O2`** を使用します。
+
+```bash
+gcc -std=c11 -O2 -Wall -Wextra -Werror -o floor_runner main.c
+```
+
+- **`-O2`（Level 2 Optimization）**:
+  コードサイズを過剰に膨らませることなく、ループ展開、インライン化、レジスタ割り当ての最適化など、最高クラスの実行速度パフォーマンスを引き出す標準的な最適化レベルです。
+
+---
+
+### ④ 環境変数 `PATH` と `~/.local/bin` へのデプロイ
+
+作成したプログラムをターミナルのどこからでもコマンド名ひとつで呼び出せるようにすることを「デプロイ（Deploy）」と呼びます。
+
+```bash
+# 1. ユーザーローカル用の実行ファイルディレクトリを作成
+mkdir -p ~/.local/bin
+
+# 2. ビルドしたバイナリを配置
+cp gear ~/.local/bin/gear
+
+# 3. SHELLの設定ファイル（~/.bashrc または ~/.zshrc）に PATH を追加
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+これにより、コマンドラインで `./gear` ではなく `gear` と打つだけでプログラムが起動するようになります。
+
+---
+
+## 2. 現場で飛び交う業界用語辞典
+
+- **POSIX (Portable Operating System Interface)**:
+  UNIX系OS（Linux, macOS, BSDなど）間でプログラムの互換性を保つための標準規格。`uname()` や `statvfs()` は POSIX 準拠のシステムコールである。
+- **システムコール (System Call)**:
+  ユーザープログラムがOSのカーネル機能（ファイル操作、メモリ確保、ハードウェアアクセス）を呼び出すための特殊な命令。
+- **デプロイ (Deployment)**:
+  開発・ビルドしたソフトウェアを実行環境に配置し、エンドユーザーが利用可能な状態にすること。
+- **インライン展開 (Function Inlining)**:
+  コンパイラの最適化機能（`-O2`など）の一つ。関数呼び出しのオーバーヘッドを無くすため、関数の中身を実行場所に直接埋め込む手法。
+- **バイナリストリッピング (Strip)**:
+  コンパイルされた実行ファイルからデバッグ用シンボル情報を削ぎ落とし、ファイルサイズを最小化する工程。
+
+---
+
+## 3. ボス戦ミッション（最終実装仕様）
+
+`Floor_10_RubyPalace/main.c` を編集し、`uname()` と `statvfs()` から実機システム情報を取得し、SAO風ヘッダーおよび以下のクリア認定証（アスキーアート）を出力する最終プログラムを完成させよ。
+
+### 要求される出力フォーマット
+
+```text
+==================================================
+  [AINCRAD SYSTEM] : RUBY PALACE - FINAL CLEAR
+==================================================
+OS      : <実機のsysname> (<実機のmachine>)
+STORAGE : <実機のディスク使用率> USED
+--------------------------------------------------
+      /\
+     /  \       SWORD ART ONLINE : KERNEL
+    / /\ \      =========================
+   / /  \ \     CLEAR CERTIFICATE
+  / /____\ \
+ / ________ \   PLAYER : KIRITO
+/ /        \ \  RANK   : S [MASTER OF KERNEL]
+==================================================
+```
+
+#### 具体的な出力例（Linux x86_64 環境の場合）
+```text
+==================================================
+  [AINCRAD SYSTEM] : RUBY PALACE - FINAL CLEAR
+==================================================
+OS      : Linux (x86_64)
+STORAGE : 42.5% USED
+--------------------------------------------------
+      /\
+     /  \       SWORD ART ONLINE : KERNEL
+    / /\ \      =========================
+   / /  \ \     CLEAR CERTIFICATE
+  / /____\ \
+ / ________ \   PLAYER : KIRITO
+/ /        \ \  RANK   : S [MASTER OF KERNEL]
+==================================================
+```
+
+### 仕様詳細
+
+1. **ヘッダー表示**:
+   `SAO_PRINT_HEADER("RUBY PALACE - FINAL CLEAR");` を使用すること。
+2. **OS情報の出力**:
+   `uname()` で取得した `sysname` と `machine` を `"OS      : %s (%s)\n"` の形式で出力すること。
+3. **ストレージ情報の出力**:
+   `statvfs(".")` を使用してカレントディレクトリが存在するディスクの総容量と使用量を計算し、`"STORAGE : %.1f%% USED\n"` の形式で小数点以下1桁のパーセンテージで出力すること。
+4. **区切り線**:
+   `--------------------------------------------------\n` (ハイフン50個) を出力すること。
+5. **クリア認定証（SAO風アスキーアート）**:
+   以下の行をそのまま出力すること。
+   ```text
+         /\
+        /  \       SWORD ART ONLINE : KERNEL
+       / /\ \      =========================
+      / /  \ \     CLEAR CERTIFICATE
+     / /____\ \
+    / ________ \   PLAYER : KIRITO
+   / /        \ \  RANK   : S [MASTER OF KERNEL]
+   ```
+6. **フッター表示**:
+   `SAO_PRINT_FOOTER();` を使用すること。
+
+---
+
+## 4. クリア手順（ターミナルで実行）
+
+1. **手動でビルドとテストを行う場合**:
+   ```bash
+   gcc -std=c11 -O2 -Wall -Wextra -Werror -o floor_runner main.c
+   ./floor_runner
+   ```
+
+2. **最終ボス戦（自動採点スクリプト）に挑む場合**:
+   ```bash
+   ./test.sh
+   ```
+   緑色の文字で `【判定】 CLEARED!` と表示され、アインクラッド全10層の攻略が完了する！
+
+3. **模範解答の検証（メンテナー・採点者用）**:
+   ```bash
+   ./test.sh --solution
+   ```
+
+---
+
+> **茅場晶彦**:
+> 「見事だ。君のコードは今やシステムと一体化し、アインクラッドの最上層に刻まれた。
+> これより君を『マスター・オブ・カーネル』と認定する。
+> さあ、全階層の記憶を携え、現実のソフトウェア開発という広大な世界へリンクスタートせよ！」
+
+
+================================================================================
+FILE: Floor_10_RubyPalace/main.c
+================================================================================
+#include <stdio.h>
+#include <sys/utsname.h>
+#include <sys/statvfs.h>
+#include "../shared/sao_ui.h"
+
+int main(void) {
+    struct utsname uts;
+    struct statvfs stat;
+    double storage_used = 0.0;
+
+    /* TODO 1: uname() システムコールを呼び出し、uts 構造体にシステム情報を取得せよ */
+    (void)uts;
+
+    /* TODO 2: statvfs(".") システムコールを呼び出し、カレントディスクの容量情報を取得せよ
+     * f_blocks, f_bavail, f_frsize から使用率（%）を計算し storage_used に代入せよ
+     */
+    (void)stat;
+    (void)storage_used;
+
+    SAO_PRINT_HEADER("RUBY PALACE - FINAL CLEAR");
+
+    /* TODO 3: 仕様に従い OS情報、STORAGE情報、区切り線、クリア認定証を出力せよ
+     * OS      : <sysname> (<machine>)
+     * STORAGE : <storage_used>% USED
+     * --------------------------------------------------
+     *       /\
+     *      /  \       SWORD ART ONLINE : KERNEL
+     *     / /\ \      =========================
+     *    / /  \ \     CLEAR CERTIFICATE
+     *   / /____\ \
+     *  / ________ \   PLAYER : KIRITO
+     * / /        \ \  RANK   : S [MASTER OF KERNEL]
+     */
+
+    SAO_PRINT_FOOTER();
+
+    /* TODO 4: 正常終了コード（0）を返せ */
+    return 1;
+}
+
+
+================================================================================
+FILE: Floor_10_RubyPalace/test.sh
+================================================================================
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+source ../shared/test_helper.sh "$1"
+
+sao_banner "10" "紅玉宮 (Ruby Palace - Final Test)"
+
+SRC_FILE="main.c"
+if [ "$USE_SOLUTION" -eq 1 ]; then
+    SRC_FILE=".solution/main.c"
+fi
+
+# 1. コンパイルチェック (リリース最適化 -O2 指定)
+gcc -std=c11 -O2 -Wall -Wextra -Werror -o floor_runner "$SRC_FILE" 2> compile_err.log
+if [ $? -ne 0 ]; then
+    cat compile_err.log
+    rm -f compile_err.log
+    sao_fail "コンパイルに失敗した。構文エラーや最適化オプション時の警告を見直したまえ。"
+fi
+rm -f compile_err.log
+sao_pass "Test 1: リリース最適化ビルド (-O2 -Wall -Wextra -Werror) 成功"
+
+# 2. 終了ステータスチェック
+OUTPUT=$(./floor_runner)
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+    rm -f floor_runner
+    sao_fail "main関数の終了コードが 0 ではない (現在の返り値: ${RET_CODE})。"
+fi
+sao_pass "Test 2: 正常終了ステータス (return 0) を確認"
+
+# 3. 出力内容の検証
+SYSNAME=$(uname -s)
+
+if ! echo "$OUTPUT" | grep -q "OS      : ${SYSNAME}"; then
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "OS名 (${SYSNAME}) が正しく出力されていない。"
+fi
+
+if ! echo "$OUTPUT" | grep -q "STORAGE : .*% USED"; then
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "STORAGEの使用率(%.1f%% USED)が正しく出力されていない。"
+fi
+
+if ! echo "$OUTPUT" | grep -q "RANK   : S \[MASTER OF KERNEL\]"; then
+    echo "--- 実際の出力 ---"
+    echo "$OUTPUT"
+    rm -f floor_runner
+    sao_fail "クリア認定証の刻印 'RANK   : S [MASTER OF KERNEL]' が見つからない。"
+fi
+
+sao_pass "Test 3: OS情報・ストレージ情報・MASTER OF KERNEL 刻印の出力を検証"
+
+rm -f floor_runner
+sao_complete "Floor_10_RubyPalace"
+
+
+================================================================================
+FILE: Makefile
+================================================================================
+.PHONY: all status test-solutions clean
+
+all: status
+
+status:
+	@echo "=================================================="
+	@echo "  SAO: KERNEL - PLAYER PROGRESS STATUS"
+	@echo "=================================================="
+	@if [ -f .sao_progress ]; then \
+		cat .sao_progress; \
+	else \
+		echo "  まだクリア済みの階層はありません。Floor_01_Gate から開始せよ。"; \
+	fi
+	@echo "=================================================="
+
+test-solutions:
+	@echo "[SYSTEM] 全フロアの模範解答 (.solution) を一括検証中..."
+	@for dir in Floor_*; do \
+		if [ -f "$$dir/test.sh" ]; then \
+			echo ">>> Testing $$dir ..."; \
+			(cd "$$dir" && ./test.sh --solution) || exit 1; \
+		fi; \
+	done
+	@echo "[SYSTEM] 全フロアの模範解答テストが正常にPASSしました！"
+
+clean:
+	rm -f Floor_*/floor_runner
+
+
+================================================================================
+FILE: README.md
+================================================================================
+# 『SAO: Kernel — 浮遊城アインクラッド最下層からの脱出』
+
+> **「これは、ゲームであっても遊びではない――」**
+> 茅場晶彦によって開発されたアインクラッド最下層のカーネル世界。
+> ここから脱出する唯一の術は、C言語の基本からポインタ、動的メモリ、ファイルI/Oをマスターし、万能CLIツール『`gear`』を構築して第10層のボスを撃破することだ。
+
+---
+
+## ⚔️ プロジェクト概要
+
+『**SAO: Kernel**』は、C言語および低レイヤのシステムプログラミング基礎をハンズオン形式でマスターするための超実践型学習コンテンツです。
+
+受講者は各階層（Floor 01 〜 Floor 10）に用意された「ミッション（`MISSION.md`）」を読み、未完成のソースコードを実装・デバッグしながら階層を攻略していきます。各階層で作成したモジュールは、最終的に万能CLIツール『**`gear`**』へと統合されます。
+
+### 📊 学マス式 3大ステータス評価体系
+
+本教材では、学園アイドルマスター（学マス）の評価システムに着想を得た**3大ステータス指標**によって、エンジニアとしての基礎能力を総合的に育成・評価します。
+
+```
+       [ Logic (論理・構文) ]
+                /\
+               /  \
+              /    \
+             /  SAO \
+            / Kernel \
+           /__________\
+[ Memory (メモリ) ]  [ Audit (監査・堅牢性) ]
+```
+
+| ステータス | 意味・育成要素 | 本教材における具体例 |
+| :--- | :--- | :--- |
+| **Logic (ロジック)** | C言語の基本文法、制御フロー、アルゴリズムの正確な記述力 | `if-else`, `for/while`, `argc/argv` のコマンドライン引数解析, 早期リターン |
+| **Memory (メモリー)** | メモリ構造の理解、ポインタ操作、領域の安全な確保と解放 | ポインタ `*`/`&`, `malloc/free`, メモリリーク防止, バッファオーバーフロー防止 |
+| **Audit (オーディット)** | エラーハンドリング、防御的プログラミング、バグ監査能力 | `errno`, `perror`, `stderr` への出力, `NULL` ガード, AIを活用した脆弱性・バグ監査 |
+
+---
+
+## 🛠️ 完全初心者向け環境構築マニュアル
+
+開発環境として **Linux（Ubuntu）** または **Mac (macOS)** を使用します。Windows環境の方は WSL2（Windows Subsystem for Linux）を利用して Ubuntu を構築します。
+
+### 🪟 Windowsユーザー向け手順
+
+#### Step 1: WSL2 (Ubuntu) のインストール
+1. スタートメニューを右クリックし、「**PowerShell**（または ターミナル）」を**管理者として実行**します。
+2. 以下のコマンドを実行します。
+   ```powershell
+   wsl --install
+   ```
+3. 処理が完了したら、**PCを再起動**します。
+4. 再起動後、自動的に Ubuntu の初期設定画面（ユーザー名とパスワードの設定）が立ち上がります。画面の指示に従って任意のユーザー名とパスワードを設定してください。
+
+#### Step 2: 必要な開発ツールのインストール
+1. Ubuntu のターミナル（黒い画面）を開きます。
+2. 以下のコマンドを実行して、C言語コンパイラ（`gcc`）やビルドツール（`make`）、デバッガ（`gdb`）、`git` を一括インストールします。
+   ```bash
+   sudo apt update && sudo apt install -y build-essential git gdb
+   ```
+   ※ パスワードを求められたら、Step 1で設定したUbuntuのパスワードを入力してください（入力中の文字は画面に表示されません）。
+
+#### Step 3: Antigravity から WSL2 を開く手順
+1. エディタ **Antigravity** を起動します。
+2. キーボードで `Ctrl + Shift + P` を押し、コマンドパレットを開きます。
+3. `WSL: Connect to WSL` (または `WSL: WSLへ接続`) を検索して選択します。
+4. Antigravity 内のターミナルを開き（`Ctrl + @` または 上部メニュー `Terminal` ➔ `New Terminal`）、ターミナル種別で `Ubuntu (WSL)` が選択されていることを確認します。
+
+---
+
+### 🍎 Macユーザー向け手順
+
+1. Macの「**ターミナル**」（Terminal.app）を起動します（`Cmd + Space` で SpotLight を開き「ターミナル」と検索）。
+2. 以下のコマンドを実行して、Apple Command Line Tools（`gcc` / `make` / `git` 等）をインストールします。
+   ```bash
+   xcode-select --install
+   ```
+3. ポップアップダイアログが表示されたら「**インストール**」をクリックし、規約に同意して完了させます。
+
+---
+
+## 🖥️ Antigravity 推奨4画面レイアウト設定
+
+Antigravity 画面を以下のように4分割・配置設定することで、開発・学習効率が最大化されます。
+
+```
++------------------------+------------------------+------------------------+
+| 【左画面】              | 【中央画面】            | 【右画面】              |
+|                        |                        |                        |
+| MISSION.md             | コードエディタ          | 茅場晶彦 AIチャット     |
+| (Markdown Preview)     | (main.c 等)            | (バグ監査・質問相手)   |
+|                        |                        |                        |
++------------------------+------------------------+------------------------+
+| 【下画面】 ターミナル (Terminal / Bash / WSL)                           |
+| $ gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c && ./floor_runner|
++--------------------------------------------------------------------------+
+```
+
+### レイアウトの役割と設定方法
+- **左画面（`MISSION.md` プレビュー）**:
+  各階層の `MISSION.md` を開き、画面右上（または `Ctrl + Shift + V`）で Markdown プレビューを表示します。世界観、解説、実装仕様を常に参照しながら実装できます。
+- **中央画面（コードエディタ）**:
+  実装対象のソースコード（例: `Floor_01_Gate/main.c`）を開いて編集します。
+- **右画面（茅場晶彦 AIチャット）**:
+  Antigravity の AI エージェントパネルを開き、システムプロンプトに「茅場晶彦」のペルソナを設定、または質問や `[自主練]` でのコード監査・バグ発見の相談相手として活用します。
+- **下画面（ターミナル）**:
+  コンパイルコマンドの実行、デバッグ、ボス戦スクリプト（`./test.sh`）の起動を行います。
+
+---
+
+## 🏰 各階層の進め方 (学習サイクル)
+
+各フロア（Floor 01 〜 Floor 10）の攻略は、以下の**4ステップ**のサイクルで進めます。
+
+```
+[① セレクト] ➔ [② レッスン] ➔ [③ 自主練 (AI監査)] ➔ [④ ボス戦 (テスト)]
+```
+
+1. **① セレクト (Select)**
+   - ターミナルで攻略する階層のディレクトリに移動します。
+     ```bash
+     cd Floor_01_Gate
+     ```
+2. **② レッスン (Lesson)**
+   - `MISSION.md` をプレビューで熟読します。茅場晶彦からのシステム通達、C言語の文法解説、業界用語辞典、そしてボス戦の仕様を確認します。
+3. **③ `[自主練]` (AIバグ監査 / Practice)**
+   - スケルトンコードの `/* TODO */` を実装します。
+   - 実装したコードを右画面の AIチャットに見せ、**「このコードにメモリリークや未定義動作、バグは潜んでいないか？」** とバグ監査（Audit）を依頼してレビュー・自己改善を行います。
+4. **④ ボス戦 (Boss Battle)**
+   - ターミナルで自動採点スクリプトを実行し、テストを通過できるか挑戦します。
+     ```bash
+     ./test.sh
+     ```
+   - 画面に緑色で **`【判定】 CLEARED!`** と表示されればその階層は突破です！
+
+---
+
+## 📜 コマンドチートシート
+
+| 操作・目的 | 実行コマンド | 説明 |
+| :--- | :--- | :--- |
+| **階層へ移動** | `cd Floor_01_Gate` | 指定された階層のフォルダへ移動 |
+| **親階層へ戻る** | `cd ..` | ひとつ上のフォルダ（ルート）へ戻る |
+| **手動コンパイル & 実行** | `gcc -std=c11 -Wall -Wextra -Werror -o floor_runner main.c && ./floor_runner` | 警告をエラー扱い（`-Werror`）にして厳格にコンパイル・実行 |
+| **ボス戦（テスト実行）** | `./test.sh` | 階層クリア条件を満たしているか自動判定 |
+| **全体の進行状況確認** | `make status` (または `make`) | 現在クリア済みの階層一覧と進行状況を表示 |
+| **模範解答のテスト実行** *(講師用/緊急時)* | `./test.sh --solution` | `.solution/` 配下の模範解答コードでテストを実行 |
+| **全階層模範解答の一括テスト** *(講師用/緊急時)* | `make test-solutions` | ルート階層から全10フロアの模範解答を一括テスト |
+
+---
+
+## 🗺️ 階層別カリキュラム一覧
+
+| 階層 | ディレクトリ名 | テーマ・C言語要素 | 最終成果物 `gear` への統合 |
+| :--- | :--- | :--- | :--- |
+| **第1層** | `Floor_01_Gate` | 標準入出力 `printf`, フォーマット指定子, 型 | `gear/src/cmd_stat.c` (UI描画部) |
+| **第2層** | `Floor_02_Labyrinth` | `if-else`, `for/while`, `argc/argv`, `strcmp`, 早期リターン | `gear/src/arg_parser.c` (基本分岐) |
+| **第3層** | `Floor_03_SilverPrison` | 配列, 終端文字 `\0`, バッファオーバーフロー防止 (`safe_str_copy`) | `gear/src/safe_str.c`, `include/safe_str.h` |
+| **第4層** | `Floor_04_DraftingRoom` | 関数分割, ヘッダファイル `.h`, インクルードガード, `Makefile` | 全体ビルド構造 |
+| **第5層** | `Floor_05_Abyss` | ポインタ `&` `*`, アドレス渡し, NULLガード, ASanデバッグ | 全モジュールのポインタ操作 |
+| **第6層** | `Floor_06_SoulBlueprint` | `struct`, `typedef`, `enum`, アロー演算子 `->`, `GearConfig` | `gear/include/config.h`, `src/arg_parser.c` |
+| **第7層** | `Floor_07_Guillotine` | 動的メモリ確保 `malloc`, `realloc`, `free`, メモリリーク防止 | `gear/src/file_list.c`, `include/file_list.h` |
+| **第8層** | `Floor_08_OuterCorridor` | ファイルI/O `fopen`, ディレクトリ走査 `opendir/readdir`, `rename` | `gear/src/cmd_memo.c`, `src/cmd_clean.c` |
+| **第9層** | `Floor_09_IronWall` | `stderr`, `errno`, `perror`, 終了ステータス制御, 異常系防御 | 全コマンドのエラーハンドリング |
+| **第10層**| `Floor_10_RubyPalace` | 全モジュール統合ビルド `-O2`, `uname`/`statvfs`, PATH登録 | `gear/` 完成バイナリ |
+
+---
+
+**Link Start! 健闘を祈る。**
+
+
+================================================================================
+FILE: SPECIFICATION.md
+================================================================================
+# 『SAO: Kernel』完全設計仕様書
+
+## 1. 全体構成とモジュール合流マップ
+各フロアで学ぶ技術と作成するモジュールは、最終的に `gear/` ディレクトリの万能CLIツールへと統合される。
+
+| 階層 | ディレクトリ名 | テーマ・C言語要素 | 最終成果物 `gear` への合流先 |
+| :--- | :--- | :--- | :--- |
+| 第1層 | `Floor_01_Gate` | 標準入出力 `printf`, フォーマット指定子, 型 | `gear/src/cmd_stat.c` (UI描画部) |
+| 第2層 | `Floor_02_Labyrinth` | `if-else`, `for/while`, `argc/argv`, `strcmp`, 早期リターン | `gear/src/arg_parser.c` (基本分岐) |
+| 第3層 | `Floor_03_SilverPrison` | 配列, 終端文字 `\0`, バッファオーバーフロー防止 (`safe_str_copy`) | `gear/src/safe_str.c`, `include/safe_str.h` |
+| 第4層 | `Floor_04_DraftingRoom` | 関数分割, ヘッダファイル `.h`, インクルードガード, `Makefile` | 全体ビルド構造 |
+| 第5層 | `Floor_05_Abyss` | ポインタ `&` `*`, アドレス渡し, NULLガード, ASanデバッグ | 全モジュールのポインタ操作 |
+| 第6層 | `Floor_06_SoulBlueprint` | `struct`, `typedef`, `enum`, アロー演算子 `->`, `GearConfig` | `gear/include/config.h`, `src/arg_parser.c` |
+| 第7層 | `Floor_07_Guillotine` | 動的メモリ確保 `malloc`, `realloc`, `free`, メモリリーク防止 | `gear/src/file_list.c`, `include/file_list.h` |
+| 第8層 | `Floor_08_OuterCorridor` | ファイルI/O `fopen`, ディレクトリ走査 `opendir/readdir`, `rename` | `gear/src/cmd_memo.c`, `src/cmd_clean.c` |
+| 第9層 | `Floor_09_IronWall` | `stderr`, `errno`, `perror`, 終了ステータス制御, 異常系防御 | 全コマンドのエラーハンドリング |
+| 第10層 | `Floor_10_RubyPalace` | 全モジュール統合ビルド `-O2`, `uname`/`statvfs`, PATH登録 | `gear/` 完成バイナリ |
+
+## 2. 最終成果物『gear』仕様
+### コマンド体系
+1. `gear stat`
+   - `<sys/utsname.h>` の `uname()` と `<sys/statvfs.h>` の `statvfs(".")` を使用し、OS名・アーキテクチャ・ディスク使用率を取得してSAO風UIで表示。
+2. `gear memo "<text>"`
+   - `<time.h>` を用いて現在時刻付きのログを `./.gear_memo.log`（または環境変数 `GEAR_MEMO_PATH` で指定されたパス）へ追記する。
+3. `gear clean [target_dir] [--dry-run] [-v]`
+   - 指定ディレクトリ（デフォルトは `./dungeon_box`）内のファイルを走査し、拡張子別に `Images/` (`.png`, `.jpg`, `.gif`), `Docs/` (`.pdf`, `.md`, `.txt`), `Code/` (`.c`, `.h`, `.sh`), `Archives/` (`.zip`, `.tar`, `.gz`), `Others/` サブフォルダを作成して `rename()` で整理移動する。`--dry-run` 指定時は移動せず予定のみ出力。
+4. `gear -h` / `--help` / `-v` / `--version`
+   - ヘルプおよびバージョン情報の表示。
+
+
+================================================================================
+FILE: docs/INSTRUCTOR_GUIDE.md
+================================================================================
+# 『SAO: Kernel』講師用運用マニュアル (INSTRUCTOR GUIDE)
+
+本マニュアルは、受講生2名に対して講師（メンター）1名が伴走支援を行う際の手順、ファシリテーション、トラブルシューティング、およびコードレビュー基準を定めたガイドラインです。
+
+---
+
+## 🎯 メンターの基本方針・心構え
+
+1. **「教えすぎない」伴走型アドバイス**
+   - すぐに答え（コード）を教えるのではなく、受講生自身にコードとエラーメッセージを読ませ、**質問と問いかけで思考を誘導**してください。
+2. **3大ステータス（Logic / Memory / Audit）の意識付け**
+   - 単に「動いたからOK」とせず、「メモリリークはないか？（Memory）」「NULLが渡されたらどうなるか？（Audit）」というプロの品質意識を促します。
+3. **エラーメッセージ恐れるなかれ**
+   - 初心者はコンパイルエラーやセグメンテーション違反（Segmentation Fault）を極度に恐れます。「エラーはプログラムが問題を教えてくれている親切なヒント」と捉えさせましょう。
+
+---
+
+## 📅 ハンズオン タイムスケジュール (Day 1 / Day 2)
+
+### Day 1: 基礎〜ポインタ編（Floor 01 〜 Floor 05）
+
+| 時間 | コンテンツ | メンターのアクション & ガイド |
+| :--- | :--- | :--- |
+| **09:30 - 10:00** | キックオフ & 環境構築確認 | 受講生2名の Antigravity・WSL2/macOS環境を確認。4画面レイアウトのセットアップを導く。 |
+| **10:00 - 11:15** | **Floor 01** (標準入出力) <br>**Floor 02** (制御構文・引数解析) | C言語の基本・`printf` 桁揃え、`argc`/`argv` の理解を支援。 |
+| **11:15 - 12:30** | **Floor 03** (配列・文字列安全操作) | 終端文字 `\0` とバッファオーバーフローの危険性を説明。 |
+| **12:30 - 13:30** | 昼休み | - |
+| **13:30 - 15:00** | **Floor 04** (関数分割・ヘッダ) | ヘッダファイルと `.c` ファイルの役割分担、インクルードガードを解説。 |
+| **15:00 - 17:00** | **Floor 05** (ポインタ・アドレス渡) | **最難関ポイント**。`*` と `&` のイメージを図解でフォロー。ASanデバッグの体験。 |
+| **17:00 - 17:30** | Day 1 振り返り | `make status` で進捗を確認し、Day 1 の達成を称える。 |
+
+---
+
+### Day 2: 応用構造体〜全モジュール統合編（Floor 06 〜 Floor 10）
+
+| 時間 | コンテンツ | メンターのアクション & ガイド |
+| :--- | :--- | :--- |
+| **09:30 - 10:00** | Day 2 朝会 & スタート | 前日の復習（ポインタ・関数分割の振り返り）と本日の目標設定。 |
+| **10:00 - 11:30** | **Floor 06** (構造体・`typedef`) | 構造体とアロー演算子 `->` の使い方をレクチャー。 |
+| **11:30 - 12:30** | **Floor 07** (動的メモリ確保 `malloc`) | `malloc` / `free` のペア操作、メモリリークの検出支援。 |
+| **12:30 - 13:30** | 昼休み | - |
+| **13:30 - 15:00** | **Floor 08** (ファイルI/O・操作) | `fopen` / `fclose` およびディレクトリ走査（`opendir` / `readdir`）の支援。 |
+| **15:00 - 16:30** | **Floor 09** (エラーハンドリング) <br>**Floor 10** (全モジュール統合) | `stderr` / `errno` の扱いと、最終成果物『`gear`』のビルド・動作確認。 |
+| **16:30 - 17:30** | 成果発表会 & 総評 | 完成した `gear` コマンドを実際に動かしてもらい、フィードバックと修了証贈呈。 |
+
+---
+
+## 💡 各階層のつまずきポイントと声かけ例
+
+### 🏰 Floor 01: 転移門広場 (`printf`, フォーマット指定子, 型)
+- **絶対につまずくポイント**:
+  - `%` 自体を文字表示するためのエスケープ `%%` の失念。
+  - ゼロ埋め `%04d` や小数制御 `%.1f` のフォーマットミス。
+  - 末尾の改行文字 `\n` やスペース不足による `./test.sh` 差分エラー。
+- **メンターの声かけ例**:
+  > 💬 「出力結果が少しズレているみたいだね。ターミナルの出力と `MISSION.md` の期待値を1文字ずつ見比べてみよう！ `%` という記号そのものを表示したい時はどう書けばよかったかな？」
+
+---
+
+### 🏰 Floor 02: 迷宮区 (`if-else`, `argc`/`argv`, `strcmp`)
+- **絶対につまずくポイント**:
+  - `strcmp(s1, s2)` は「一致したときに **0** を返す」という逆直感仕様への惑わされ (`if (strcmp(...) == 0)` にすべきところを `if (strcmp(...))` と書いてしまう)。
+  - `argv[1]` にアクセスする際に `argc < 2` チェックを行わずセグメンテーション違反。
+- **メンターの声かけ例**:
+  > 💬 「`strcmp` は文字列が『同じ』とき、どんな数値を返すかな？ 0 は C言語では偽（false）扱いになるから、`== 0` と書く必要があるんだ。引数が渡されなかった時の対策も入れてみよう！」
+
+---
+
+### 🏰 Floor 03: 銀の牢獄 (配列, 終端文字 `\0`, `safe_str_copy`)
+- **絶対につメインつくポイント**:
+  - 配列の末尾に終端文字 `\0` (NULL文字) を付け忘れる。
+  - バッファサイズ `dest_size` 以上の文字をコピーして領域破壊を起こす。
+- **メンターの声かけ例**:
+  > 💬 「C言語の文字列はどこが終わりか、コンピュータはどうやって判断しているかな？ そう、`\0` だね！コピーした最後の位置に自分で `\0` をセットしたか確認してみよう」
+
+---
+
+### 🏰 Floor 04: 起草室 (関数分割, ヘッダ `.h`, インクルードガード)
+- **絶対につまずくポイント**:
+  - ヘッダファイルでのインクルードガード (`#ifndef ... #define ... #endif`) の記述ミス。
+  - 関数宣言（プロトタイプ宣言）と関数定義の引数型不一致。
+- **メンターの声かけ例**:
+  > 💬 「ヘッダファイルが複数回読み込まれると『二重定義エラー』が起きるんだ。それを防ぐためのおまじない（インクルードガード）が正しく閉じられているか確認してみよう！」
+
+---
+
+### 🏰 Floor 05: 奈落 (ポインタ `*` `/` `&`, アドレス渡し, NULLガード)
+- **絶対につまずくポイント**:
+  - `*`（値の参照・間接参照）と `&`（アドレスの取得）の混乱。
+  - ポインタ引数に対する `NULL` チェック漏れによるクラッシュ。
+- **メンターの声かけ例**:
+  > 💬 「変数の『値』そのものを渡したいのかな？それとも『変数の住所（アドレス）』を渡したいのかな？ `&` はポストに書かれた住所、`*` はその住所の家の中に入って中身を取り出す鍵だとイメージしてみよう！」
+
+---
+
+### 🏰 Floor 06: 魂の設計図 (`struct`, `typedef`, `enum`, アロー演算子 `->`)
+- **絶対につまずくポイント**:
+  - 構造体変数へのドット演算子 `.` と、構造体ポインタへのアロー演算子 `->` の混同。
+  - `typedef` の構文ミス。
+- **メンターの声かけ例**:
+  > 💬 「今操作しようとしている変数は構造体の『実体』かな、それとも『ポインタ』かな？ ポインタ経由でメンバにアクセスするときは矢印（`->`）を使うんだったね！」
+
+---
+
+### 🏰 Floor 07: 断頭台 (動的メモリ確保 `malloc`, `realloc`, `free`)
+- **絶対につまずくポイント**:
+  - `malloc` 後にメモリ確保失敗時の `NULL` チェックを怠る。
+  - `free` の呼び忘れによるメモリリーク（Memory Leak）。
+- **メンターの声かけ例**:
+  > 💬 「`malloc` はOSにメモリをおねだりする関数だけど、メモリが一杯だったら `NULL` が返ってくるよ。受け取った直後に `NULL` チェックが入っているか、使い終わったら `free` しているかチェックしよう！」
+
+---
+
+### 🏰 Floor 08: 外郭回廊 (ファイルI/O `fopen`, `readdir`, `rename`)
+- **絶対につまずくポイント**:
+  - `fopen` で開いたファイルの `fclose` 忘れ。
+  - ディレクトリ走査（`readdir`）でドットファイル（`.` や `..`）を意図せず処理対象にしてしまう。
+- **メンターの声かけ例**:
+  > 💬 「ファイルやディレクトリを操作するときは、必ず開いたら閉じる（`fclose` / `closedir`）が鉄則だよ。あと、`readdir` で取得できる `.` や `..` はスキップしているかな？」
+
+---
+
+### 🏰 Floor 09: 鉄壁 (エラー処理 `stderr`, `errno`, `perror`)
+- **絶対につまずくポイント**:
+  - エラーメッセージを `printf`（標準出力）に出力してしまう（標準エラー出力 `fprintf(stderr, ...)` が正解）。
+  - エラー発生時に適切な非ゼロの終了ステータスコード（例: `EXIT_FAILURE` または `1`）を返していない。
+- **メンターの声かけ例**:
+  > 💬 「正常な出力とエラーログは出力先を分けるのがプロの作法なんだ。`printf` ではなく `fprintf(stderr, ...)` や `perror` を使えているか確認してみよう！」
+
+---
+
+### 🏰 Floor 10: 紅玉宮 (全モジュール統合ビルド `-O2`, PATH登録)
+- **絶対につメインつくポイント**:
+  - 過去フロアで作った `.c` / `.h` モジュールの依存関係が原因の未定義シンボル（Undefined reference）エラー。
+  - コンパイルオプション `-O2` や `-Werror` による潜在的な警告の検出。
+- **メンターの声かけ例**:
+  > 💬 「ついに最後のフロアだね！ビルドエラーが出たらログの最初の一行を読もう。どの関数が見つからないと言われているかな？過去のフロアで作成したヘッダファイルとソースコードのリンクを確認しよう！」
+
+---
+
+## 🔍 PR (Pull Request) レビュー基準・チェックリスト
+
+受講生が課題を提出・クリアした際、メンターは以下のチェックリストに基づいてレビューを行ってください。
+
+- [ ] **1. コンパイル判定 (Logic)**
+  - `gcc -std=c11 -Wall -Wextra -Werror` で警告・エラーゼロでコンパイルできるか。
+- [ ] **2. 自動テスト通過 (Logic)**
+  - 該当階層の `./test.sh` を実行し、`CLEARED!` が出力されるか。
+- [ ] **3. メモリ・ポインタ安全系 (Memory)**
+  - ポインタを受け取るすべての関数で `NULL` ガードが行われているか。
+  - `malloc` したメモリは漏れなく `free` されているか。
+  - 配列アクセスや文字列コピーで境界外アクセス（バッファオーバーフロー）の危険性がないか。
+- [ ] **4. エラーハンドリング・堅牢性 (Audit)**
+  - システムコールやファイル操作関数（`fopen`, `malloc`, `opendir`）の戻り値チェックが行われているか。
+  - エラー発生時に `stderr` への出力および適切な終了ステータスが返されているか。
+- [ ] **5. コードスタイル & 可読性**
+  - インデントが統一され、不必要なマジックナンバーが排除されているか。
+
+---
+
+## 🚨 緊急時・確認用コマンド（模範解答の使い方）
+
+本教材には、メンターが受講生の詰まりを解消する際の確認用、および自動テスト用として**模範解答**が組み込まれています。
+
+### 1. 該当階層での模範解答テスト実行
+受講生の環境でテストが通らない原因が「テストスクリプト自体の問題」か「受講生のコードの実装ミス」かを切り分ける際、該当階層ディレクトリ内で以下を実行します。
+
+```bash
+cd Floor_01_Gate
+./test.sh --solution
+```
+※ `.solution/` 配下の模範解答コードを用いてビルド・テストが実行され、`CLEARED!` となればテスト環境自体は正常であると確認できます。
+
+### 2. 全階層の模範解答一括検証
+レポジトリ全体の整合性や全フロアの解答コードを検証する場合は、ルートディレクトリから以下を実行します。
+
+```bash
+make test-solutions
+```
+※ 全10フロアの模範解答が一括実行され、すべてのテストが PASS することを確認できます。
+
+### ⚠️ メンター運用ルール
+- **受講生へ模範解答を直接見せるのは最終手段**としてください。
+- 模範解答コード（`.solution/` 内のファイル）を見せる前に、受講生には「ヒント」や「該当箇所のドキュメントの再読」を促し、自力で解決した達成感を守るように徹底してください。
+
+
+================================================================================
+FILE: gear/Makefile
+================================================================================
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -Iinclude -I../shared
+ASAN_FLAGS = -fsanitize=address -g
+
+SRCS = src/safe_str.c \
+       src/file_list.c \
+       src/arg_parser.c \
+       src/cmd_stat.c \
+       src/cmd_memo.c \
+       src/cmd_clean.c \
+       src/main.c
+
+OBJS = $(SRCS:.c=.o)
+TARGET = gear
+
+.PHONY: all asan install clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+asan: CFLAGS += $(ASAN_FLAGS)
+asan: clean $(TARGET)
+
+install: $(TARGET)
+	mkdir -p ~/.local/bin
+	cp $(TARGET) ~/.local/bin/$(TARGET)
+
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+
+================================================================================
+FILE: gear/include/config.h
+================================================================================
+#ifndef GEAR_CONFIG_H
+#define GEAR_CONFIG_H
+
+#include <stdbool.h>
+#include <stddef.h>
+
+#define MAX_PATH_LEN 1024
+#define MAX_MEMO_LEN 512
+
+typedef enum {
+    CMD_NONE = 0,
+    CMD_HELP,
+    CMD_VERSION,
+    CMD_STAT,
+    CMD_MEMO,
+    CMD_CLEAN
+} GearCommand;
+
+typedef struct {
+    GearCommand command;
+    char target_path[MAX_PATH_LEN];
+    char memo_text[MAX_MEMO_LEN];
+    bool dry_run;
+    bool verbose;
+} GearConfig;
+
+int parse_args(int argc, char *argv[], GearConfig *out_config);
+
+#endif /* GEAR_CONFIG_H */
+
+
+================================================================================
+FILE: gear/include/file_list.h
+================================================================================
+#ifndef GEAR_FILE_LIST_H
+#define GEAR_FILE_LIST_H
+
+#include <stddef.h>
+
+typedef struct {
+    char *filename;
+    char extension[32];
+    size_t size_bytes;
+} FileItem;
+
+typedef struct {
+    FileItem *items;
+    size_t count;
+    size_t capacity;
+} FileList;
+
+int init_file_list(FileList *list, size_t initial_capacity);
+int add_file_item(FileList *list, const char *filename, const char *ext, size_t size_bytes);
+void free_file_list(FileList *list);
+
+#endif /* GEAR_FILE_LIST_H */
+
+
+================================================================================
+FILE: gear/include/gear.h
+================================================================================
+#ifndef GEAR_H
+#define GEAR_H
+
+#include "config.h"
+#include "safe_str.h"
+#include "file_list.h"
+
+#define GEAR_VERSION "1.0.0-aincrad"
+
+int cmd_stat_run(const GearConfig *config);
+int cmd_memo_run(const GearConfig *config);
+int cmd_clean_run(const GearConfig *config);
+
+#endif /* GEAR_H */
+
+
+================================================================================
+FILE: gear/include/safe_str.h
+================================================================================
+#ifndef GEAR_SAFE_STR_H
+#define GEAR_SAFE_STR_H
+
+#include <stddef.h>
+
+int safe_str_copy(char *dest, size_t dest_size, const char *src);
+int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file);
+
+#endif /* GEAR_SAFE_STR_H */
+
+
+================================================================================
+FILE: gear/src/arg_parser.c
+================================================================================
+#include "config.h"
+#include "safe_str.h"
+#include <string.h>
+#include <stdio.h>
+
+int parse_args(int argc, char *argv[], GearConfig *out_config) {
+    if (!out_config) {
+        return -1;
+    }
+
+    memset(out_config, 0, sizeof(GearConfig));
+    out_config->command = CMD_NONE;
+
+    if (argc <= 1) {
+        out_config->command = CMD_HELP;
+        return 0;
+    }
+
+    int i = 1;
+    while (i < argc) {
+        const char *arg = argv[i];
+
+        if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
+            out_config->command = CMD_HELP;
+            return 0;
+        } else if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
+            out_config->command = CMD_VERSION;
+            return 0;
+        } else if (strcmp(arg, "--dry-run") == 0) {
+            out_config->dry_run = true;
+        } else if (strcmp(arg, "--verbose") == 0 || strcmp(arg, "-v") == 0) {
+            out_config->verbose = true;
+        } else if (strcmp(arg, "stat") == 0) {
+            if (out_config->command == CMD_NONE) {
+                out_config->command = CMD_STAT;
+            }
+        } else if (strcmp(arg, "memo") == 0) {
+            if (out_config->command == CMD_NONE) {
+                out_config->command = CMD_MEMO;
+            }
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                i++;
+                if (safe_str_copy(out_config->memo_text, sizeof(out_config->memo_text), argv[i]) != 0) {
+                    fprintf(stderr, "Error: Memo text too long.\n");
+                    return -1;
+                }
+            } else if (out_config->memo_text[0] == '\0') {
+                fprintf(stderr, "Error: 'memo' command requires a message.\n");
+                return -1;
+            }
+        } else if (strcmp(arg, "clean") == 0) {
+            if (out_config->command == CMD_NONE) {
+                out_config->command = CMD_CLEAN;
+            }
+        } else {
+            if (out_config->command == CMD_CLEAN && out_config->target_path[0] == '\0' && arg[0] != '-') {
+                if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), arg) != 0) {
+                    fprintf(stderr, "Error: Target path too long.\n");
+                    return -1;
+                }
+            } else if (out_config->command == CMD_NONE && arg[0] != '-') {
+                fprintf(stderr, "Error: Unknown command or argument '%s'\n", arg);
+                return -1;
+            }
+        }
+        i++;
+    }
+
+    if (out_config->command == CMD_CLEAN && out_config->target_path[0] == '\0') {
+        if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), "./dungeon_box") != 0) {
+            return -1;
+        }
+    }
+
+    if (out_config->command == CMD_MEMO && out_config->memo_text[0] == '\0') {
+        fprintf(stderr, "Error: 'memo' command requires a message.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+================================================================================
+FILE: gear/src/cmd_clean.c
+================================================================================
+#include "gear.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+
+static const char *get_category(const char *ext) {
+    if (!ext || ext[0] == '\0') {
+        return "Others";
+    }
+
+    if (strcasecmp(ext, ".png") == 0 || strcasecmp(ext, ".jpg") == 0 ||
+        strcasecmp(ext, ".jpeg") == 0 || strcasecmp(ext, ".gif") == 0) {
+        return "Images";
+    }
+
+    if (strcasecmp(ext, ".pdf") == 0 || strcasecmp(ext, ".md") == 0 ||
+        strcasecmp(ext, ".txt") == 0) {
+        return "Docs";
+    }
+
+    if (strcasecmp(ext, ".c") == 0 || strcasecmp(ext, ".h") == 0 ||
+        strcasecmp(ext, ".sh") == 0 || strcasecmp(ext, ".py") == 0) {
+        return "Code";
+    }
+
+    if (strcasecmp(ext, ".zip") == 0 || strcasecmp(ext, ".tar") == 0 ||
+        strcasecmp(ext, ".gz") == 0 || strcasecmp(ext, ".tgz") == 0) {
+        return "Archives";
+    }
+
+    return "Others";
+}
+
+int cmd_clean_run(const GearConfig *config) {
+    if (!config) {
+        return 1;
+    }
+
+    DIR *dir = opendir(config->target_path);
+    if (!dir) {
+        fprintf(stderr, "Error: Cannot open directory '%s': %s\n", config->target_path, strerror(errno));
+        return 1;
+    }
+
+    FileList flist;
+    if (init_file_list(&flist, 16) != 0) {
+        closedir(dir);
+        fprintf(stderr, "Error: Failed to initialize file list\n");
+        return 1;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        char full_path[MAX_PATH_LEN];
+        if (safe_path_join(full_path, sizeof(full_path), config->target_path, entry->d_name) != 0) {
+            continue;
+        }
+
+        struct stat st;
+        if (stat(full_path, &st) != 0) {
+            continue;
+        }
+
+        if (S_ISREG(st.st_mode)) {
+            const char *dot = strrchr(entry->d_name, '.');
+            const char *ext = dot ? dot : "";
+            add_file_item(&flist, entry->d_name, ext, (size_t)st.st_size);
+        }
+    }
+    closedir(dir);
+
+    if (flist.count == 0) {
+        if (config->verbose) {
+            printf("No regular files to organize in '%s'.\n", config->target_path);
+        }
+        free_file_list(&flist);
+        return 0;
+    }
+
+    for (size_t i = 0; i < flist.count; i++) {
+        const char *fname = flist.items[i].filename;
+        const char *ext = flist.items[i].extension;
+        const char *cat = get_category(ext);
+
+        char sub_dir[MAX_PATH_LEN];
+        if (safe_path_join(sub_dir, sizeof(sub_dir), config->target_path, cat) != 0) {
+            fprintf(stderr, "Error creating path for directory '%s'\n", cat);
+            continue;
+        }
+
+        if (!config->dry_run) {
+            struct stat st_dir;
+            if (stat(sub_dir, &st_dir) != 0) {
+                if (mkdir(sub_dir, 0755) != 0 && errno != EEXIST) {
+                    fprintf(stderr, "Error creating directory '%s': %s\n", sub_dir, strerror(errno));
+                    continue;
+                }
+            }
+        }
+
+        char src_path[MAX_PATH_LEN];
+        char dst_path[MAX_PATH_LEN];
+        if (safe_path_join(src_path, sizeof(src_path), config->target_path, fname) != 0 ||
+            safe_path_join(dst_path, sizeof(dst_path), sub_dir, fname) != 0) {
+            fprintf(stderr, "Error constructing path for '%s'\n", fname);
+            continue;
+        }
+
+        if (config->dry_run) {
+            printf("[DRY-RUN] Move '%s' -> '%s/'\n", fname, cat);
+        } else {
+            if (rename(src_path, dst_path) != 0) {
+                fprintf(stderr, "Error moving '%s' -> '%s/': %s\n", fname, cat, strerror(errno));
+            } else if (config->verbose) {
+                printf("[MOVED] '%s' -> '%s/'\n", fname, cat);
+            }
+        }
+    }
+
+    free_file_list(&flist);
+    return 0;
+}
+
+
+================================================================================
+FILE: gear/src/cmd_memo.c
+================================================================================
+#define _POSIX_C_SOURCE 200809L
+#include "gear.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int cmd_memo_run(const GearConfig *config) {
+    if (!config) {
+        return 1;
+    }
+
+    const char *memo_path = getenv("GEAR_MEMO_PATH");
+    if (!memo_path || memo_path[0] == '\0') {
+        memo_path = "./.gear_memo.log";
+    }
+
+    FILE *fp = fopen(memo_path, "a");
+    if (!fp) {
+        perror("Error opening memo log file");
+        return 1;
+    }
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    struct tm tm_buf;
+    localtime_r(&ts.tv_sec, &tm_buf);
+
+    int ms = (int)(ts.tv_nsec / 1000000);
+
+    fprintf(fp, "[%04d-%02d-%02d %02d:%02d:%02d.%03d] %s\n",
+            tm_buf.tm_year + 1900,
+            tm_buf.tm_mon + 1,
+            tm_buf.tm_mday,
+            tm_buf.tm_hour,
+            tm_buf.tm_min,
+            tm_buf.tm_sec,
+            ms,
+            config->memo_text);
+
+    fclose(fp);
+
+    printf("[MEMO RECORDED] -> %s\n", memo_path);
+
+    return 0;
+}
+
+
+================================================================================
+FILE: gear/src/cmd_stat.c
+================================================================================
+#include "gear.h"
+#include "../../shared/sao_ui.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/utsname.h>
+#include <sys/statvfs.h>
+
+int cmd_stat_run(const GearConfig *config) {
+    (void)config;
+
+    const char *user = getenv("USER");
+    if (!user || user[0] == '\0') {
+        user = "UNKNOWN_PLAYER";
+    }
+
+    struct utsname uts;
+    if (uname(&uts) != 0) {
+        perror("uname failed");
+        return 1;
+    }
+
+    struct statvfs vfs;
+    if (statvfs(".", &vfs) != 0) {
+        perror("statvfs failed");
+        return 1;
+    }
+
+    unsigned long long total_bytes = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+    unsigned long long free_bytes = (unsigned long long)vfs.f_bfree * vfs.f_frsize;
+    unsigned long long used_bytes = total_bytes - free_bytes;
+
+    double used_pct = 0.0;
+    if (total_bytes > 0) {
+        used_pct = ((double)used_bytes / (double)total_bytes) * 100.0;
+    }
+
+    int total_blocks = 10;
+    int filled_blocks = (int)((used_pct / 100.0) * total_blocks + 0.5);
+    if (filled_blocks > total_blocks) filled_blocks = total_blocks;
+    if (filled_blocks < 0) filled_blocks = 0;
+
+    char bar_str[128] = {0};
+    int pos = 0;
+    bar_str[pos++] = '[';
+    for (int i = 0; i < filled_blocks; i++) {
+        /* "█" is UTF-8 bytes 0xE2, 0x96, 0x88 */
+        bar_str[pos++] = (char)0xE2;
+        bar_str[pos++] = (char)0x96;
+        bar_str[pos++] = (char)0x88;
+    }
+    for (int i = filled_blocks; i < total_blocks; i++) {
+        /* "░" is UTF-8 bytes 0xE2, 0x96, 0x91 */
+        bar_str[pos++] = (char)0xE2;
+        bar_str[pos++] = (char)0x96;
+        bar_str[pos++] = (char)0x91;
+    }
+    bar_str[pos++] = ']';
+    bar_str[pos] = '\0';
+
+    SAO_PRINT_HEADER("PLAYER & SYSTEM STATS");
+    printf(" PLAYER NAME : %s\n", user);
+    printf(" OS SYSTEM   : %s %s\n", uts.sysname, uts.release);
+    printf(" ARCHITECTURE: %s\n", uts.machine);
+    printf(" STORAGE USAGE: %s %.1f%%\n", bar_str, used_pct);
+    SAO_PRINT_FOOTER();
+
+    return 0;
+}
+
+
+================================================================================
+FILE: gear/src/file_list.c
+================================================================================
+#include "file_list.h"
+#include "safe_str.h"
+#include <stdlib.h>
+#include <string.h>
+
+int init_file_list(FileList *list, size_t initial_capacity) {
+    if (!list) {
+        return -1;
+    }
+    size_t cap = (initial_capacity > 0) ? initial_capacity : 8;
+    list->items = malloc(cap * sizeof(FileItem));
+    if (!list->items) {
+        return -1;
+    }
+    list->count = 0;
+    list->capacity = cap;
+    return 0;
+}
+
+int add_file_item(FileList *list, const char *filename, const char *ext, size_t size_bytes) {
+    if (!list || !filename) {
+        return -1;
+    }
+    if (list->count >= list->capacity) {
+        size_t new_cap = (list->capacity == 0) ? 8 : list->capacity * 2;
+        FileItem *new_items = realloc(list->items, new_cap * sizeof(FileItem));
+        if (!new_items) {
+            return -1;
+        }
+        list->items = new_items;
+        list->capacity = new_cap;
+    }
+
+    size_t name_len = strlen(filename);
+    char *dup_name = malloc(name_len + 1);
+    if (!dup_name) {
+        return -1;
+    }
+    memcpy(dup_name, filename, name_len + 1);
+
+    list->items[list->count].filename = dup_name;
+    if (safe_str_copy(list->items[list->count].extension, sizeof(list->items[list->count].extension), ext ? ext : "") != 0) {
+        free(dup_name);
+        return -1;
+    }
+    list->items[list->count].size_bytes = size_bytes;
+    list->count++;
+
+    return 0;
+}
+
+void free_file_list(FileList *list) {
+    if (!list) {
+        return;
+    }
+    if (list->items) {
+        for (size_t i = 0; i < list->count; i++) {
+            free(list->items[i].filename);
+        }
+        free(list->items);
+        list->items = NULL;
+    }
+    list->count = 0;
+    list->capacity = 0;
+}
+
+
+================================================================================
+FILE: gear/src/main.c
+================================================================================
+#include "gear.h"
+#include "../../shared/sao_ui.h"
+#include <stdio.h>
+
+static void print_help(void) {
+    SAO_PRINT_HEADER("GEAR CLI TOOL - HELP");
+    printf(" Usage: gear <command> [options]\n\n");
+    printf(" Commands:\n");
+    printf("   stat                  Display system and player stats with SAO UI\n");
+    printf("   memo <text>           Append timestamped memo to log file\n");
+    printf("   clean [target_dir]    Organize files in directory by extensions\n");
+    printf("\n Options:\n");
+    printf("   -h, --help            Show this help message\n");
+    printf("   -v, --version         Show version information\n");
+    printf("   --dry-run             Simulate file organization without moving files\n");
+    printf("   --verbose             Enable verbose output\n");
+    SAO_PRINT_FOOTER();
+}
+
+static void print_version(void) {
+    printf("gear version %s\n", GEAR_VERSION);
+}
+
+int main(int argc, char *argv[]) {
+    GearConfig config;
+    if (parse_args(argc, argv, &config) != 0) {
+        return 1;
+    }
+
+    switch (config.command) {
+        case CMD_HELP:
+            print_help();
+            return 0;
+        case CMD_VERSION:
+            print_version();
+            return 0;
+        case CMD_STAT:
+            return cmd_stat_run(&config);
+        case CMD_MEMO:
+            return cmd_memo_run(&config);
+        case CMD_CLEAN:
+            return cmd_clean_run(&config);
+        case CMD_NONE:
+        default:
+            print_help();
+            return 0;
+    }
+}
+
+
+================================================================================
+FILE: gear/src/safe_str.c
+================================================================================
+#include "safe_str.h"
+#include <string.h>
+#include <stdbool.h>
+
+int safe_str_copy(char *dest, size_t dest_size, const char *src) {
+    if (!dest || dest_size == 0) {
+        return -1;
+    }
+    if (!src) {
+        dest[0] = '\0';
+        return 0;
+    }
+    size_t src_len = strlen(src);
+    if (src_len >= dest_size) {
+        return -1;
+    }
+    memcpy(dest, src, src_len + 1);
+    return 0;
+}
+
+int safe_path_join(char *dest, size_t dest_size, const char *dir, const char *file) {
+    if (!dest || dest_size == 0 || !dir || !file) {
+        return -1;
+    }
+    size_t dir_len = strlen(dir);
+    size_t file_len = strlen(file);
+    bool needs_slash = (dir_len > 0 && dir[dir_len - 1] != '/');
+    size_t total_len = dir_len + (needs_slash ? 1 : 0) + file_len;
+
+    if (total_len >= dest_size) {
+        return -1;
+    }
+
+    memcpy(dest, dir, dir_len);
+    size_t pos = dir_len;
+    if (needs_slash) {
+        dest[pos++] = '/';
+    }
+    memcpy(dest + pos, file, file_len + 1);
+    return 0;
+}
+
+
+================================================================================
+FILE: gear/test_gear.sh
+================================================================================
+#!/usr/bin/env bash
+set -e
+
+echo "[1/6] Building with ASan..."
+make clean
+make asan
+
+echo "[2/6] Testing help and version..."
+./gear -h
+./gear --help
+./gear -v
+./gear --version
+
+echo "[3/6] Testing stat..."
+./gear stat
+
+echo "[4/6] Testing memo..."
+export GEAR_MEMO_PATH="./test_memo.log"
+rm -f "$GEAR_MEMO_PATH"
+./gear memo "Link Start"
+if [ ! -f "$GEAR_MEMO_PATH" ]; then
+    echo "Error: Memo file was not created!"
+    exit 1
+fi
+grep -q "Link Start" "$GEAR_MEMO_PATH"
+rm -f "$GEAR_MEMO_PATH"
+
+echo "[5/6] Testing clean (dry-run and execute)..."
+TEST_DIR="./test_sandbox"
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR"
+touch "$TEST_DIR/hero.png"
+touch "$TEST_DIR/notes.txt"
+touch "$TEST_DIR/main.c"
+touch "$TEST_DIR/data.zip"
+touch "$TEST_DIR/other.unknown"
+
+# Test dry-run
+./gear clean "$TEST_DIR" --dry-run
+if [ ! -f "$TEST_DIR/hero.png" ]; then
+    echo "Error: Dry-run moved file!"
+    exit 1
+fi
+
+# Test actual clean
+./gear clean "$TEST_DIR"
+if [ ! -f "$TEST_DIR/Images/hero.png" ] || \
+   [ ! -f "$TEST_DIR/Docs/notes.txt" ] || \
+   [ ! -f "$TEST_DIR/Code/main.c" ] || \
+   [ ! -f "$TEST_DIR/Archives/data.zip" ] || \
+   [ ! -f "$TEST_DIR/Others/other.unknown" ]; then
+    echo "Error: Files were not organized correctly!"
+    exit 1
+fi
+rm -rf "$TEST_DIR"
+
+echo "[6/6] Testing error cases..."
+NON_EXISTENT="./non_existent_folder_12345"
+rm -rf "$NON_EXISTENT"
+
+set +e
+ERR_OUTPUT=$(./gear clean "$NON_EXISTENT" 2>&1)
+EXIT_CODE=$?
+set -e
+
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "Error: Expected non-zero exit status on non-existent directory!"
+    exit 1
+fi
+
+if [ -z "$ERR_OUTPUT" ]; then
+    echo "Error: Expected stderr output on non-existent directory!"
+    exit 1
+fi
+
+echo "Cleaning up build artifacts..."
+make clean
+
+echo "ALL TESTS PASSED SUCCESSFULLY!"
+
+
+================================================================================
+FILE: shared/sao_ui.h
+================================================================================
+#ifndef SAO_UI_H
+#define SAO_UI_H
+
+#include <stdio.h>
+
+/* ANSI Color Codes */
+#define SAO_CLR_RESET   "\033[0m"
+#define SAO_CLR_CYAN    "\033[1;36m"
+#define SAO_CLR_GREEN   "\033[1;32m"
+#define SAO_CLR_YELLOW  "\033[1;33m"
+#define SAO_CLR_RED     "\033[1;31m"
+#define SAO_CLR_MAGENTA "\033[1;35m"
+
+/* SAO System Banner Macros */
+#define SAO_PRINT_HEADER(title) \
+    do { \
+        printf("==================================================\n"); \
+        printf("  [AINCRAD SYSTEM] : %s\n", (title)); \
+        printf("==================================================\n"); \
+    } while (0)
+
+#define SAO_PRINT_FOOTER() \
+    do { \
+        printf("==================================================\n"); \
+    } while (0)
+
+#endif /* SAO_UI_H */
+
+
+================================================================================
+FILE: shared/test_helper.sh
+================================================================================
+#!/bin/bash
+# SAO: Kernel - Common Test Helper Library
+
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+CYAN='\033[1;36m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+USE_SOLUTION=0
+if [ "$1" = "--solution" ]; then
+    USE_SOLUTION=1
+fi
+
+sao_banner() {
+    local floor_num="$1"
+    local floor_title="$2"
+    echo -e "${CYAN}==================================================${NC}"
+    echo -e "${CYAN}  SWORD ART ONLINE : KERNEL - FLOOR ${floor_num} BOSS TEST${NC}"
+    echo -e "${CYAN}  [${floor_title}]${NC}"
+    if [ "$USE_SOLUTION" -eq 1 ]; then
+        echo -e "${YELLOW}  [MODE: SOLUTION VERIFICATION (.solution)]${NC}"
+    fi
+    echo -e "${CYAN}==================================================${NC}"
+}
+
+sao_pass() {
+    local msg="$1"
+    echo -e "${GREEN}[PASS]${NC} ${msg}"
+}
+
+sao_fail() {
+    local msg="$1"
+    echo -e "${RED}[FAIL]${NC} ${msg}"
+    echo -e "${RED}--------------------------------------------------${NC}"
+    echo -e "${RED}【判定】 FAILED... ロジックを見直し、再び挑みたまえ。${NC}"
+    exit 1
+}
+
+sao_complete() {
+    local floor_id="$1"
+    echo -e "${GREEN}--------------------------------------------------${NC}"
+    echo -e "${GREEN}【判定】 CLEARED! 転移門が開かれた。次層へ進みたまえ！${NC}"
+    echo -e "${GREEN}==================================================${NC}"
+    if [ "$USE_SOLUTION" -eq 0 ]; then
+        local root_dir
+        root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - ${floor_id} CLEARED" >> "${root_dir}/.sao_progress"
+    fi
+    exit 0
+}
+

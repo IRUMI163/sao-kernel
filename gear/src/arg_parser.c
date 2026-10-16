@@ -40,7 +40,7 @@ int parse_args(int argc, char *argv[], GearConfig *out_config) {
             }
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 i++;
-                if (safe_str_copy(out_config->memo_text, sizeof(out_config->memo_text), argv[i]) != 0) {
+                if (safe_str_copy(out_config->memo_text, sizeof(out_config->memo_text), argv[i]) < 0) {
                     fprintf(stderr, "Error: Memo text too long.\n");
                     return -1;
                 }
@@ -54,7 +54,7 @@ int parse_args(int argc, char *argv[], GearConfig *out_config) {
             }
         } else {
             if (out_config->command == CMD_CLEAN && out_config->target_path[0] == '\0' && arg[0] != '-') {
-                if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), arg) != 0) {
+                if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), arg) < 0) {
                     fprintf(stderr, "Error: Target path too long.\n");
                     return -1;
                 }
@@ -67,7 +67,7 @@ int parse_args(int argc, char *argv[], GearConfig *out_config) {
     }
 
     if (out_config->command == CMD_CLEAN && out_config->target_path[0] == '\0') {
-        if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), "./dungeon_box") != 0) {
+        if (safe_str_copy(out_config->target_path, sizeof(out_config->target_path), "./dungeon_box") < 0) {
             return -1;
         }
     }

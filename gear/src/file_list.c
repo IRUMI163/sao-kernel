@@ -39,7 +39,7 @@ int add_file_item(FileList *list, const char *filename, const char *ext, size_t 
     memcpy(dup_name, filename, name_len + 1);
 
     list->items[list->count].filename = dup_name;
-    if (safe_str_copy(list->items[list->count].extension, sizeof(list->items[list->count].extension), ext ? ext : "") != 0) {
+    if (safe_str_copy(list->items[list->count].extension, sizeof(list->items[list->count].extension), ext ? ext : "") < 0) {
         free(dup_name);
         return -1;
     }

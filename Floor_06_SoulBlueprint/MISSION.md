@@ -112,6 +112,30 @@ void reset_player(Player *p) {
 
 ---
 
+### ⑤ 構造体のゼロクリア（`memset`）と文字列の安全格納（`snprintf`）
+
+構造体変数を宣言した直後は、メモリ上に予期せぬゴミデータ（不定値）が残っています。
+初期化漏れによる誤動作を防ぐため、まずは `<string.h>` の `memset` を使って構造体全体をゼロクリアするのが現場の定石です。
+
+```c
+#include <string.h>
+
+/* out_config が指すメモリ領域全体を 0 で埋める */
+memset(out_config, 0, sizeof(GearConfig));
+```
+
+また、構造体の固定長文字配列メンバ（例: `target_path[MAX_PATH_LEN]`）に安全に文字列をコピーするには、`<stdio.h>` の `snprintf` を使うのが非常に便利です。
+バッファサイズを指定することで、絶対に領域外へ溢れさせず、かつ自動的に末尾に `\0` を付与してくれます。
+
+```c
+#include <stdio.h>
+
+/* 安全に target_path に文字列をコピー */
+snprintf(out_config->target_path, sizeof(out_config->target_path), "%s", src);
+```
+
+---
+
 ## 2. 現場で飛び交う業界用語辞典
 
 - **データモデリング（Data Modeling）**:
@@ -197,13 +221,10 @@ int parse_args(int argc, char *argv[], GearConfig *out_config);
 
 ### クリア手順（ターミナルで実行）
 
-1. 未完成スケルトンでのテスト確認（失敗することを確認）:
+1. `arg_parser.c` を編集して未完成の `parse_args` 関数を実装せよ。
+2. ボス戦（自動採点スクリプト）に挑む：
    ```bash
    ./test.sh
    ```
-2. 模範解答（.solution）でのテスト確認（成功することを確認）:
-   ```bash
-   ./test.sh --solution
-   ```
+3. コマンドライン引数の各パターンを網羅した単体テストが実行され、緑色の文字で `【判定】 CLEARED!` と表示されれば第6層突破だ！
 
-全テストを通過（`CLEARED!`）し、第6層の魂の設計図を完成させよ！

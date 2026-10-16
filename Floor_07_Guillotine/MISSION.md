@@ -184,6 +184,26 @@ typedef struct {
   - `ext` を `extension[32]` バッファへ安全にコピー（末尾ヌル文字 `\0` を保証）。
   - `size_bytes` を設定し、`list->count++` を行う。
 
+> 💡 **文字列コピーの実装ヒント**:
+> 1. **動的確保した領域へのコピー (`filename`)**:
+>    `char *copy = malloc(strlen(filename) + 1);` で終端 `\0` 分を含む領域を確保できているため、標準の `strcpy(copy, filename);`（または `memcpy`）で安全にコピーできます。
+>    ```c
+>    char *name_buf = malloc(strlen(filename) + 1);
+>    if (!name_buf) return -1;
+>    strcpy(name_buf, filename);
+>    list->items[list->count].filename = name_buf;
+>    ```
+> 2. **固定長配列への安全なコピー (`extension[32]`)**:
+>    `snprintf` を使えば、サイズ制限をかけつつ自動で `\0` を付与できます。
+>    ```c
+>    snprintf(list->items[list->count].extension, sizeof(list->items[list->count].extension), "%s", ext);
+>    ```
+>    あるいは `strncpy` を使う場合は、必ず末尾を明示的に `\0` で閉じる習慣をつけましょう：
+>    ```c
+>    strncpy(list->items[list->count].extension, ext, sizeof(list->items[list->count].extension) - 1);
+>    list->items[list->count].extension[sizeof(list->items[list->count].extension) - 1] = '\0';
+>    ```
+
 #### 3. `void free_file_list(FileList *list)`
 - **説明**: `FileList` が保持しているすべてのヒープメモリを安全に解放し、初期状態にリセットする。
 - **引数**:
