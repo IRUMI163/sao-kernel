@@ -1,0 +1,18 @@
+# Build artifacts
+*.o
+*.out
+*.exe
+*.dSYM/
+floor_runner
+gear/gear
+bin/
+
+# Sandbox & Runtime files
+dungeon_box/
+.sao_progress
+.gear_memo.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
