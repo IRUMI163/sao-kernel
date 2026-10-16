@@ -2,29 +2,43 @@
 #include <string.h>
 
 int main(int argc, char *argv[]) {
+    /* =========================================================================
+     * 【第2層 実装ミッション：コマンドライン引数解析ルーター】
+     * 
+     * MISSION.md の手引きを参考に、以下の5つの条件分岐（if文）を順番に実装せよ。
+     * 
+     * 【1つ目のお手本：引数なしのガード節】
+     *   if (argc < 2) {
+     *       printf("[ERROR] NO COMMAND SPECIFIED\n");
+     *       return 1;
+     *   }
+     * 
+     * 【2つ目：-h オプションの判定】
+     *   if (strcmp(argv[1], "-h") == 0) {
+     *       printf("USAGE: gear <stat|memo|clean> [options]\n");
+     *       return 0;
+     *   }
+     * 
+     * 【3つ目：-v オプションの判定】
+     *   if (strcmp(argv[1], "-v") == 0) { ... "GEAR VERSION 1.0.0-aincrad" を出力し return 0; }
+     * 
+     * 【4つ目：memo コマンドの判定】
+     *   if (strcmp(argv[1], "memo") == 0) {
+     *       if (argc == 2) { printf("[ERROR] EMPTY MEMO\n"); return 1; }
+     *       printf("MEMO:");
+     *       for (int i = 2; i < argc; i++) { printf(" %s", argv[i]); }
+     *       printf("\n");
+     *       return 0;
+     *   }
+     * 
+     * 【5つ目：未知のコマンドの処理】
+     *   printf("[ERROR] UNKNOWN COMMAND: %s\n", argv[1]);
+     *   return 1;
+     * 
+     * ※ 自分のコードを書いたら、下にある (void)... の行は消して構わないぞ。
+     * ========================================================================= */
     (void)argc;
     (void)argv;
-
-    /* TODO: MISSION.md の仕様に従い、コマンドライン引数パースエンジンを実装せよ。
-     *
-     * 1. 引数が存在しない場合 (argc < 2):
-     *    "[ERROR] NO COMMAND SPECIFIED" と標準出力し、終了コード 1 で早期リターン。
-     *
-     * 2. "./floor_runner -h" の場合 (strcmp(argv[1], "-h") == 0):
-     *    "USAGE: gear <stat|memo|clean> [options]" と標準出力し、終了コード 0 で早期リターン。
-     *
-     * 3. "./floor_runner -v" の場合 (strcmp(argv[1], "-v") == 0):
-     *    "GEAR VERSION 1.0.0-aincrad" と標準出力し、終了コード 0 で早期リターン。
-     *
-     * 4. "./floor_runner memo <単語1> <単語2> ..." の場合 (strcmp(argv[1], "memo") == 0):
-     *    - 単語が存在しない場合 (argc == 2):
-     *      "[ERROR] EMPTY MEMO" と標準出力し、終了コード 1 で早期リターン。
-     *    - 単語が存在する場合 (argc >= 3):
-     *      "MEMO: <単語1> <単語2> ..." と第3引数以降をスペース区切りで出力し、終了コード 0 で早期リターン。
-     *
-     * 5. それ以外の未知のコマンドの場合:
-     *    "[ERROR] UNKNOWN COMMAND: <argv[1]>" と標準出力し、終了コード 1 で早期リターン。
-     */
 
     return 1;
 }

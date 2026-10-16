@@ -11,7 +11,7 @@
  */
 void level_up(int level) {
     /* TODO: ポインタ渡しに変更し、指す先を +1 する */
-    level++;
+    (void)level;
 }
 
 /*
